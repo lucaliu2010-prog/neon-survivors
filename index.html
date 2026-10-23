@@ -8,8 +8,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<!-- QUI C'È LA RIGA AGGIUNTA PER PWABUILDER -->
-<link rel="manifest" href="manifest.json">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none; background: #1e1e24; font-family: 'Segoe UI', sans-serif; color: #e0e0e0; }
@@ -28,12 +26,22 @@
   #home-btn { position: absolute; top: 110px; right: 15px; background: #2b2b36; border: 2px solid #a0a0a0; color: #fff; padding: 8px 12px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; z-index: 15; display: none; transition: all 0.2s; }
   body.playing #home-btn { display: block; }
 
+  #omnitrix-btn {
+    position: absolute; bottom: 220px; right: 20px; width: 80px; height: 80px;
+    border-radius: 50%; background: #00ff00; border: 4px solid #ffffff;
+    color: #000; font-size: 14px; font-weight: bold; cursor: pointer;
+    z-index: 25; display: none; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px #00ff00; animation: pulse 1s infinite alternate;
+  }
+  #omnitrix-btn:active { transform: scale(0.9); background: #ffffff; }
+  @keyframes pulse { from { box-shadow: 0 0 10px #00ff00; } to { box-shadow: 0 0 30px #00ff00; } }
+
   #inventory-container { position: absolute; top: 100px; left: 15px; display: flex; flex-direction: column; gap: 8px; pointer-events: none; z-index: 2; }
   .inv-row { display: flex; flex-direction: row; gap: 5px; flex-wrap: wrap; max-width: 300px; }
   .inv-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; background: #2b2b36; border: 2px solid #555; color: #fff; position: relative; }
   .inv-icon.p2-row { border-color: #f4a261; }
   .inv-icon.max { border-color: #f4a261; }
-  .inv-icon.evo { border-color: #0ff; }
+  .inv-icon.evo { border-color: #0ff; box-shadow: 0 0 10px #0ff; }
 
   #p1-joystick-zone { position: absolute; bottom: 0; left: 0; width: 50%; height: 60%; display: none; z-index: 5; touch-action: none; }
   #p1-base { position: absolute; width: 100px; height: 100px; background: rgba(76, 201, 240, 0.15); border: 2px solid rgba(76, 201, 240, 0.6); border-radius: 50%; display: none; transform: translate(-50%, -50%); pointer-events: none; }
@@ -90,13 +98,11 @@
   .upgrade-card:hover { background: #353542; border-color: #4cc9f0; }
   .upgrade-card h3 { color: #e0e0e0; margin-bottom: 10px; font-size: 18px; }
   .upgrade-card p { font-size: 14px; color: #a0a0a0; }
-  .upgrade-card.evo { border-color: #f4a261; background: #352b2b; }
+  .upgrade-card.evo { border-color: #f4a261; background: #352b2b; box-shadow: 0 0 15px rgba(244, 162, 97, 0.3); }
   .upgrade-card.evo h3 { color: #f4a261; }
   
   .action-bar { display: flex; gap: 10px; margin-top: 15px; }
-
   #player-select-toggle .btn { padding: 6px 18px; font-size: 14px; }
-
   #install-btn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #4cc9f0; border: none; color: #1e1e24; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 24px; cursor: pointer; z-index: 999; display: none; }
   #install-btn.show { display: block; }
 
@@ -122,6 +128,7 @@
     #inventory-container { top: 105px; }
     #floor-banner { font-size: 32px; }
     #floor-sub { font-size: 14px; }
+    #omnitrix-btn { width: 60px; height: 60px; font-size: 10px; bottom: 180px; }
   }
 </style>
 </head>
@@ -151,6 +158,7 @@
 
 <div id="dash-btn-p1">DASH 1</div>
 <div id="dash-btn-p2">DASH 2</div>
+<button id="omnitrix-btn" onclick="cycleOmnitrix(1)">TRASFORMA</button>
 
 <button id="install-btn" onclick="installPWA()">📲 INSTALLA APP</button>
 
@@ -196,31 +204,20 @@
 <div id="shop-screen" class="overlay">
   <h2>NEGOZIO PERMANENTE</h2>
   <p style="margin-bottom: 20px;">Monete: 🪙 <span id="shop-coin-total">0</span></p>
-  
   <div style="display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 500px;">
     <div style="background: #2b2b36; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <h3 style="color:#4cc9f0;">Vita Massima +</h3>
-        <p style="font-size: 14px; color: #a0a0a0;">+20 HP iniziali (Lv: <span id="lvl-hp">0</span>)</p>
-      </div>
+      <div><h3 style="color:#4cc9f0;">Vita Massima +</h3><p style="font-size: 14px; color: #a0a0a0;">+20 HP iniziali (Lv: <span id="lvl-hp">0</span>)</p></div>
       <button class="btn" onclick="buyUpgrade('hp')" id="buy-hp">Costo: 100</button>
     </div>
     <div style="background: #2b2b36; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <h3 style="color:#4cc9f0;">Velocità +</h3>
-        <p style="font-size: 14px; color: #a0a0a0;">+5% Velocità (Lv: <span id="lvl-spd">0</span>)</p>
-      </div>
+      <div><h3 style="color:#4cc9f0;">Velocità +</h3><p style="font-size: 14px; color: #a0a0a0;">+5% Velocità (Lv: <span id="lvl-spd">0</span>)</p></div>
       <button class="btn" onclick="buyUpgrade('spd')" id="buy-spd">Costo: 150</button>
     </div>
     <div style="background: #2b2b36; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <h3 style="color:#4cc9f0;">Reroll Level Up</h3>
-        <p style="font-size: 14px; color: #a0a0a0;">+1 Reroll iniziale</p>
-      </div>
+      <div><h3 style="color:#4cc9f0;">Reroll Level Up</h3><p style="font-size: 14px; color: #a0a0a0;">+1 Reroll iniziale</p></div>
       <button class="btn" onclick="buyUpgrade('reroll')" id="buy-reroll">Costo: 200</button>
     </div>
   </div>
-
   <button class="btn" onclick="toggleShop()" style="margin-top: 30px;">TORNA INDIETRO</button>
 </div>
 
@@ -254,7 +251,6 @@
     <p>🏆 Tempo: <b id="go-time">0</b>s</p>
     <p id="go-floor-line" style="display:none;">🏰 Piano raggiunto: <b id="go-floor">0</b></p>
     <p>🪙 Monete guadagnate: <b id="go-coins">0</b></p>
-    <p style="font-size: 14px; color: #a0a0a0; margin-top: 10px;">Le monete sono state aggiunte al tuo salvataggio.</p>
   </div>
   <button class="btn big" onclick="returnToHome()">TORNA ALLA HOME</button>
 </div>
@@ -279,20 +275,15 @@ window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 100));
 resize();
 
-/* ============================================================
-   SISTEMA EMOJI (Renderizzate e messe in cache per performance)
-   ============================================================ */
 const emojiCache = {};
 function getEmojiCanvas(emoji, fontSize) {
   const key = emoji + fontSize;
   if (emojiCache[key]) return emojiCache[key];
   const c = document.createElement('canvas');
   const x = c.getContext('2d');
-  c.width = fontSize * 1.5; 
-  c.height = fontSize * 1.5;
+  c.width = fontSize * 1.5; c.height = fontSize * 1.5;
   x.font = `${fontSize}px Arial, sans-serif`;
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
   x.fillText(emoji, c.width / 2, c.height / 2);
   emojiCache[key] = c;
   return c;
@@ -352,9 +343,6 @@ function toggleShop() {
   else { shop.classList.remove('show'); start.classList.add('show'); }
 }
 
-/* ============================================================
-   PERSONAGGI (Tutti con Emoji!)
-   ============================================================ */
 const characters = [
   { name: '骑士', emoji: '🛡️', hp: 220, speed: 4.0, magnet: 150, startWeapon: 'sword', color: '#4cc9f0', desc: 'Spada<br>220 HP<br>Tank' },
   { name: '游侠', emoji: '🏹', hp: 130, speed: 5.3, magnet: 160, startWeapon: 'bow', color: '#2ecc71', desc: 'Arco<br>130 HP<br>Preciso' },
@@ -368,7 +356,9 @@ const characters = [
   { name: 'Spider-Man', emoji: '🕷️', hp: 140, speed: 6.0, magnet: 180, startWeapon: 'web', color: '#e63946', desc: 'Ragnatela<br>140 HP<br>Rallenta' },
   { name: 'Mago Spiriti', emoji: '👻', hp: 150, speed: 4.5, magnet: 200, startWeapon: 'spirit', color: '#2a9d8f', passive: 'necro', desc: 'Spirito<br>150 HP<br>Evoca' },
   { name: 'Iron Man', emoji: '🤖', hp: 150, speed: 5.0, magnet: 150, startWeapon: 'raygun', color: '#cc0000', desc: 'Ray Gun<br>150 HP<br>Veloce' },
-  { name: 'Hulk', emoji: '🦍', hp: 260, speed: 3.5, magnet: 150, startWeapon: 'fire', color: '#00cc33', passive: 'hulk', desc: 'Aura Fuoco<br>260 HP<br>25% Armatura' }
+  { name: 'Hulk', emoji: '🦍', hp: 260, speed: 3.5, magnet: 150, startWeapon: 'fire', color: '#00cc33', passive: 'hulk', desc: 'Aura Fuoco<br>260 HP<br>25% Armatura' },
+  { name: 'Omnitrix', emoji: '⌚', hp: 160, speed: 5.2, magnet: 180, startWeapon: 'fist', color: '#00ff00', isOmnitrix: true, desc: 'Forme<br>160 HP<br>Trasforma' },
+  { name: 'Harry Potter', emoji: '🪄', hp: 140, speed: 5.0, magnet: 200, startWeapon: 'wand', color: '#8b0000', desc: 'Magia<br>140 HP<br>Stupore' }
 ];
 
 let currentMode = 1;
@@ -376,6 +366,49 @@ let currentGameMode = 'endless';
 let p1CharIndex = 0;
 let p2CharIndex = 1;
 let selectingPlayer = 1;
+
+// --- SISTEMA FORME OMNITRIX ---
+const omniForms = [
+  { name: 'Ben', emoji: '⌚', hpMult: 1, spdMult: 1, color: '#00ff00' },
+  { name: 'Heatblast', emoji: '🔥', hpMult: 1.2, spdMult: 0.9, color: '#ff0000' },
+  { name: 'XLR8', emoji: '⚡', hpMult: 0.8, spdMult: 1.6, color: '#0000ff' },
+  { name: 'Four Arms', emoji: '💪', hpMult: 1.5, spdMult: 0.8, color: '#b22222' },
+  { name: 'Diamondhead', emoji: '💎', hpMult: 1.3, spdMult: 1.0, color: '#00ffcc' }
+];
+
+function cycleOmnitrix(plIndex) {
+  const pl = plIndex === 1 ? p1 : p2;
+  if (!pl || !pl.isOmnitrix || pl.unlockedForms <= 1 || pl.hp <= 0) return;
+  
+  pl.currentFormIndex = (pl.currentFormIndex + 1) % pl.unlockedForms;
+  const form = omniForms[pl.currentFormIndex];
+  
+  pl.emoji = form.emoji;
+  pl.color = form.color;
+  pl.maxHp = Math.floor(pl.baseHp * form.hpMult);
+  pl.hp = Math.min(pl.hp, pl.maxHp);
+  pl.speed = pl.baseSpeed * form.spdMult;
+  
+  // Cambia l'arma in base alla forma
+  pl.weapons = pl.weapons.filter(w => w.id !== 'fist' && w.id !== 'fire' && w.id !== 'lightning' && w.id !== 'dagger' && w.id !== 'omni_blast');
+  
+  if (pl.currentFormIndex === 0) { // Ben
+    pl.weapons.unshift(JSON.parse(JSON.stringify(weaponTypes['fist'])));
+  } else if (pl.currentFormIndex === 1) { // Heatblast
+    pl.weapons.unshift(JSON.parse(JSON.stringify(weaponTypes['fire'])));
+  } else if (pl.currentFormIndex === 2) { // XLR8
+    pl.weapons.unshift(JSON.parse(JSON.stringify(weaponTypes['dagger'])));
+  } else if (pl.currentFormIndex === 3) { // Four Arms
+    pl.weapons.unshift(JSON.parse(JSON.stringify(weaponTypes['sword'])));
+  } else if (pl.currentFormIndex === 4) { // Diamondhead
+    pl.weapons.unshift(JSON.parse(JSON.stringify(weaponTypes['pistol'])));
+  }
+  
+  updateInventory();
+  playSound(800, 'square', 0.2, 0.1, 400);
+}
+
+// -------------------------------
 
 function setSelectingPlayer(p) { selectingPlayer = p; updateSelectingUI(); playSound(600, 'sine', 0.05, 0.03); }
 
@@ -472,10 +505,8 @@ function selectSpeed(val, btn) {
   playSound(600, 'sine', 0.1, 0.05);
 }
 
-/* ============================================================
-   ARMI
-   ============================================================ */
 const weaponTypes = {
+  fist: { id: 'fist', name: 'Pugno', icon: '✊', color: '#00ff00', desc: 'Mischia base.', level: 1, maxLevel: 10, cd: 0.4, cdTimer: 0, evolved: false },
   sword: { id: 'sword', name: 'Spada', icon: '🗡️', color: '#4cc9f0', desc: 'Taglia i nemici.', level: 1, maxLevel: 10, cd: 0.6, cdTimer: 0, evolved: false },
   bow: { id: 'bow', name: 'Arco', icon: '🏹', color: '#2ecc71', desc: 'Frecce precise.', level: 1, maxLevel: 10, cd: 0.55, cdTimer: 0, evolved: false },
   dagger: { id: 'dagger', name: 'Pugnale', icon: '🗡️', color: '#e63946', desc: 'Colpi rapidi.', level: 1, maxLevel: 10, cd: 0.3, cdTimer: 0, evolved: false },
@@ -490,14 +521,17 @@ const weaponTypes = {
   spirit: { id: 'spirit', name: 'Spirito', icon: '👻', color: '#2a9d8f', desc: 'Evoca.', level: 1, maxLevel: 10, cd: 1.0, cdTimer: 0, evolved: false },
   boomerang: { id: 'boomerang', name: 'Boomerang', icon: '🪃', color: '#e9c46a', desc: 'Torna.', level: 0, maxLevel: 10, cd: 1.0, cdTimer: 0, evolved: false },
   lightning: { id: 'lightning', name: 'Fulmine', icon: '⚡', color: '#f4a261', desc: 'Cade.', level: 0, maxLevel: 10, cd: 1.2, cdTimer: 0, evolved: false },
-  raygun: { id: 'raygun', name: 'Ray Gun', icon: '🛸', color: '#0ff', desc: 'Laser rotante.', level: 1, maxLevel: 10, cd: 0, cdTimer: 0, evolved: false }
+  raygun: { id: 'raygun', name: 'Ray Gun', icon: '🛸', color: '#0ff', desc: 'Laser rotante.', level: 1, maxLevel: 10, cd: 0, cdTimer: 0, evolved: false },
+  wand: { id: 'wand', name: 'Bacchetta', icon: '🪄', color: '#8b0000', desc: 'Magia.', level: 1, maxLevel: 10, cd: 0.5, cdTimer: 0, evolved: false }
 };
 
 function createPlayer(charObj, xOffset) {
   let finalHp = charObj.hp + (meta.hpLvl * 20);
   let finalSpeed = charObj.speed + (charObj.speed * (meta.spdLvl * 0.05));
+  let isOmni = charObj.isOmnitrix || false;
   return {
-    x: xOffset, y: 0, speed: finalSpeed, radius: 14, hp: finalHp, maxHp: finalHp,
+    x: xOffset, y: 0, speed: finalSpeed, baseSpeed: finalSpeed, radius: 14, 
+    hp: finalHp, maxHp: finalHp, baseHp: finalHp,
     xp: 0, xpNext: 10, level: 1,
     weapons: [ JSON.parse(JSON.stringify(weaponTypes[charObj.startWeapon])) ],
     invuln: 0, magnetRange: charObj.magnet,
@@ -505,7 +539,8 @@ function createPlayer(charObj, xOffset) {
     color: charObj.color, emoji: charObj.emoji, passive: charObj.passive || null, killCount: 0,
     dashCd: 0, isDashing: false, dashTimer: 0, dashDir: {x:0, y:0},
     knockbackVx: 0, knockbackVy: 0,
-    facingX: 1, facingY: 0 
+    facingX: 1, facingY: 0,
+    isOmnitrix: isOmni, unlockedForms: 1, currentFormIndex: 0, omniTimer: 0
   };
 }
 
@@ -532,11 +567,13 @@ window.addEventListener('keydown', e => {
   if (['a','A'].includes(e.key)) keys.left = 1;
   if (['d','D'].includes(e.key)) keys.right = 1;
   if (e.key === 'Shift') triggerDash(p1);
+  if (e.key === 'q' || e.key === 'Q') cycleOmnitrix(1);
   if (['ArrowUp'].includes(e.key)) { keys.up2 = 1; e.preventDefault(); }
   if (['ArrowDown'].includes(e.key)) { keys.down2 = 1; e.preventDefault(); }
   if (['ArrowLeft'].includes(e.key)) { keys.left2 = 1; e.preventDefault(); }
   if (['ArrowRight'].includes(e.key)) { keys.right2 = 1; e.preventDefault(); }
   if (e.key === 'Enter') { triggerDash(p2); e.preventDefault(); }
+  if (e.key === 'p' || e.key === 'P') cycleOmnitrix(2);
 });
 window.addEventListener('keyup', e => {
   if (['w','W'].includes(e.key)) keys.up = 0;
@@ -667,15 +704,19 @@ function generateFloor(floorNum) {
   enemies.length = 0;
   floorEnemiesRemaining = 0;
   const isBossFloor = floorNum % 5 === 0;
+  const isTitanFloor = floorNum % 10 === 0;
   
-  if (isBossFloor) {
+  if (isTitanFloor) {
+    const titan = spawnEnemyAt(0, -200, true, true);
+    titan.hp = 3000 + floorNum * 400; titan.maxHp = titan.hp;
+    titan.radius = 40; titan.type = 'titan'; titan.xp = 200;
+    titan.dmg = 40 + floorNum * 5;
+    floorEnemiesRemaining = 1;
+  } else if (isBossFloor) {
     const boss = spawnEnemyAt(0, -200, true);
-    boss.hp = 400 + floorNum * 80;
-    boss.maxHp = boss.hp;
-    boss.radius = 30;
-    boss.type = 'boss';
-    boss.xp = 50;
-    boss.dmg = 20 + floorNum * 2;
+    boss.hp = 1200 + floorNum * 250; boss.maxHp = boss.hp;
+    boss.radius = 30; boss.type = 'boss'; boss.xp = 50;
+    boss.dmg = 25 + floorNum * 3;
     floorEnemiesRemaining = 1;
   } else {
     floorEnemiesNeeded = 6 + floorNum * 2;
@@ -683,7 +724,7 @@ function generateFloor(floorNum) {
     floorEnemiesRemaining = floorEnemiesNeeded;
   }
   
-  showFloorBanner(floorNum, isBossFloor);
+  showFloorBanner(floorNum, isBossFloor || isTitanFloor);
 }
 
 function showFloorBanner(n, isBoss) {
@@ -710,12 +751,14 @@ function spawnEnemyInRoom() {
   spawnEnemyAt(x, y, false);
 }
 
-function spawnEnemyAt(x, y, isBoss) {
+function spawnEnemyAt(x, y, isBoss, isTitan) {
   const diff = currentGameMode === 'tower' ? currentFloor : Math.floor(gameTime / 15);
   let type;
   
-  if (isBoss) {
-    type = { color: '#9b5de5', hp: 400 + currentFloor * 80, speed: 0.9, radius: 26, dmg: 20, xp: 50, type: 'boss', emoji: '😈', phase: 1 };
+  if (isTitan) {
+    type = { color: '#ff0000', hp: 3000 + currentFloor * 400, speed: 0.7, radius: 40, dmg: 40, xp: 200, type: 'titan', emoji: '🐉', phase: 1, actionTimer: 1.5 };
+  } else if (isBoss) {
+    type = { color: '#9b5de5', hp: 1200 + currentFloor * 250, speed: 0.9, radius: 30, dmg: 25, xp: 50, type: 'boss', emoji: '😈', phase: 1 };
   } else if (diff > 4 && Math.random() < 0.15) {
     type = { color: '#adb5bd', hp: 40 + diff*10, speed: 0.8, radius: 16, dmg: 10, xp: 8, type: 'armored', emoji: '🦾' };
   } else if (diff > 2 && Math.random() < 0.25) {
@@ -742,13 +785,23 @@ function spawnEnemy() {
   const x = target.x + Math.cos(angle) * dist;
   const y = target.y + Math.sin(angle) * dist;
   
-  const isBoss = gameTime > 45 && Math.random() < 0.05;
+  const isTitan = gameTime > 120 && Math.random() < 0.02;
+  const isBoss = !isTitan && gameTime > 45 && Math.random() < 0.05;
   const diff = Math.floor(gameTime / 15);
   
+  if (isTitan) {
+    enemies.push({
+      x, y, color: '#ff0000', hp: 3000 + gameTime * 20, maxHp: 3000 + gameTime * 20,
+      speed: 0.7, radius: 40, dmg: 40, xp: 200, type: 'titan', emoji: '🐉',
+      phase: 1, actionTimer: 1.5, shootTimer: 0, slowTimer: 0
+    });
+    return;
+  }
+
   if (isBoss) {
     enemies.push({
-      x, y, color: '#9b5de5', hp: 400 + gameTime * 8, maxHp: 400 + gameTime * 8,
-      speed: 0.9, radius: 26, dmg: 20, xp: 50, type: 'boss', emoji: '😈',
+      x, y, color: '#9b5de5', hp: 1200 + gameTime * 15, maxHp: 1200 + gameTime * 15,
+      speed: 0.9, radius: 30, dmg: 25, xp: 50, type: 'boss', emoji: '😈',
       phase: 1, shootTimer: 0, slowTimer: 0
     });
     return;
@@ -799,6 +852,14 @@ function startGame() {
   p1 = createPlayer(c1, currentGameMode === 'tower' ? -60 : 0);
   p2 = currentMode === 2 ? createPlayer(c2, currentGameMode === 'tower' ? 60 : 60) : null;
   
+  // Gestione Bottone Omnitrix
+  const omniBtn = document.getElementById('omnitrix-btn');
+  if ((p1 && p1.isOmnitrix) || (p2 && p2.isOmnitrix)) {
+    omniBtn.style.display = 'flex';
+  } else {
+    omniBtn.style.display = 'none';
+  }
+  
   rerollsLeft = meta.rerolls;
   banishedChoices = [];
   currentWeather = 'clear'; weatherTimer = 0;
@@ -824,6 +885,7 @@ function returnToHome() {
   document.body.className = isTouchDevice ? 'touch-device' : '';
   document.getElementById('floor-hud').style.display = 'none';
   document.getElementById('enemies-hud').style.display = 'none';
+  document.getElementById('omnitrix-btn').style.display = 'none';
   updateCoinUI();
 }
 
@@ -896,6 +958,17 @@ function updateWeapons(pl, speedDt) {
     const isMax = maxPowerTimer > 0;
     const dmgMult = isMax ? 5 : 1;
 
+    // FIST (Omnitrix Base)
+    if (w.id === 'fist' && w.cdTimer <= 0) {
+      let nearest = null, minDistSq = 5000; 
+      enemies.forEach(e => { const dx = e.x - pl.x, dy = e.y - pl.y; const dSq = dx*dx + dy*dy; if (dSq < minDistSq) { minDistSq = dSq; nearest = e; } });
+      if (nearest) {
+        const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x);
+        projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: (15 + w.level * 5)*dmgMult, life: 0.3, color: '#ffffff', radius: 15, emoji: '💥', hitList: [] });
+        w.cdTimer = isMax ? 0.1 : w.cd;
+      }
+    }
+
     if (w.id === 'sword' && w.cdTimer <= 0) {
       const range = (80 + w.level * 15) * (isMax ? 2 : 1);
       const rangeSq = range * range;
@@ -922,18 +995,7 @@ function updateWeapons(pl, speedDt) {
         const num = isMax ? 5 : Math.min(1 + Math.floor(w.level / 3), 3);
         for (let i = 0; i < num; i++) {
           const spread = (i - (num-1)/2) * 0.12;
-          projectiles.push({
-            x: pl.x, y: pl.y,
-            vx: Math.cos(angle + spread) * (22 + w.level),
-            vy: Math.sin(angle + spread) * (22 + w.level),
-            damage: (14 + w.level * 7) * dmgMult,
-            life: 1.8,
-            color: '#2ecc71',
-            radius: 5,
-            emoji: '➡️',
-            hitList: [],
-            pierce: w.level >= 5 || isMax
-          });
+          projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle + spread) * (22 + w.level), vy: Math.sin(angle + spread) * (22 + w.level), damage: (14 + w.level * 7) * dmgMult, life: 1.8, color: '#2ecc71', radius: 5, emoji: '➡️', hitList: [], pierce: w.level >= 5 || isMax });
         }
         w.cdTimer = isMax ? 0.1 : w.cd;
       }
@@ -947,18 +1009,7 @@ function updateWeapons(pl, speedDt) {
         const num = isMax ? 4 : Math.min(1 + Math.floor(w.level / 4), 3);
         for (let i = 0; i < num; i++) {
           const spread = (i - (num-1)/2) * 0.15;
-          projectiles.push({
-            x: pl.x, y: pl.y,
-            vx: Math.cos(angle + spread) * 30,
-            vy: Math.sin(angle + spread) * 30,
-            damage: (10 + w.level * 5) * dmgMult,
-            life: 0.6,
-            color: '#e63946',
-            radius: 5,
-            emoji: '🗡️',
-            hitList: [],
-            pierce: w.level >= 7 || isMax
-          });
+          projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle + spread) * 30, vy: Math.sin(angle + spread) * 30, damage: (10 + w.level * 5) * dmgMult, life: 0.6, color: '#e63946', radius: 5, emoji: '🗡️', hitList: [], pierce: w.level >= 7 || isMax });
         }
         w.cdTimer = isMax ? 0.1 : w.cd;
       }
@@ -969,20 +1020,7 @@ function updateWeapons(pl, speedDt) {
       enemies.forEach(e => { const dx = e.x - pl.x, dy = e.y - pl.y; const dSq = dx*dx + dy*dy; if (dSq < minDistSq) { minDistSq = dSq; nearest = e; } });
       if (nearest) {
         const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x);
-        projectiles.push({
-          x: pl.x, y: pl.y,
-          vx: Math.cos(angle) * 14,
-          vy: Math.sin(angle) * 14,
-          damage: 5 * dmgMult,
-          life: 0.8,
-          color: '#3ecfe0',
-          radius: 8,
-          emoji: '🧪',
-          hitList: [],
-          isPotion: true,
-          potionLevel: w.level,
-          owner: pl
-        });
+        projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle) * 14, vy: Math.sin(angle) * 14, damage: 5 * dmgMult, life: 0.8, color: '#3ecfe0', radius: 8, emoji: '🧪', hitList: [], isPotion: true, potionLevel: w.level, owner: pl });
         w.cdTimer = isMax ? 0.1 : w.cd;
       }
     }
@@ -993,29 +1031,9 @@ function updateWeapons(pl, speedDt) {
       if (vx === 0 && vy === 0) {
         let nearest = null, minDistSq = Infinity;
         enemies.forEach(e => { const dx = e.x - pl.x, dy = e.y - pl.y; const dSq = dx*dx + dy*dy; if (dSq < minDistSq) { minDistSq = dSq; nearest = e; } });
-        if (nearest) {
-          const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x);
-          vx = Math.cos(angle); vy = Math.sin(angle);
-        } else {
-          vx = 1; vy = 0;
-        }
+        if (nearest) { const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x); vx = Math.cos(angle); vy = Math.sin(angle); } else { vx = 1; vy = 0; }
       }
-
-      projectiles.push({
-        x: pl.x, y: pl.y,
-        vx: vx * 12, 
-        vy: vy * 12,
-        damage: (40 + w.level * 20) * dmgMult,
-        life: 1.5,
-        color: '#d90429',
-        radius: 10,
-        emoji: '💣',
-        hitList: [],
-        isTNT: true,
-        blastRadius: 100 + w.level * 10,
-        owner: pl,
-        exploded: false
-      });
+      projectiles.push({ x: pl.x, y: pl.y, vx: vx * 12, vy: vy * 12, damage: (40 + w.level * 20) * dmgMult, life: 1.5, color: '#d90429', radius: 10, emoji: '💣', hitList: [], isTNT: true, blastRadius: 100 + w.level * 10, owner: pl, exploded: false });
       w.cdTimer = isMax ? 0.1 : w.cd;
     }
 
@@ -1041,19 +1059,22 @@ function updateWeapons(pl, speedDt) {
       const num = 6 + w.level;
       for(let i=0; i<num; i++) {
         const a = (i/num) * Math.PI * 2;
-        projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(a)*(10 + w.level*0.5), vy: Math.sin(a)*(10 + w.level*0.5), damage: (5 + w.level*4)*dmgMult, life: 2, color: '#9b5de5', radius: 6, emoji: '🔮', hitList: [], pierce: true });
+        let p = { x: pl.x, y: pl.y, vx: Math.cos(a)*(10 + w.level*0.5), vy: Math.sin(a)*(10 + w.level*0.5), damage: (5 + w.level*4)*dmgMult, life: 2, color: '#9b5de5', radius: 6, emoji: '🔮', hitList: [], pierce: true };
+        if (w.evolved) { p.vx *= 1.5; p.vy *= 1.5; p.life = 3; p.damage *= 2; }
+        projectiles.push(p);
       }
       w.cdTimer = isMax ? 0.1 : w.cd * (w.level > 5 ? 0.7 : 1);
     }
 
     if (w.id === 'fire' && w.cdTimer <= 0) {
-      const range = 50 + w.level * 25;
+      const range = (50 + w.level * 25) * (w.evolved ? 1.5 : 1);
       const rangeSq = range * range;
-      const fireDmg = (10 + w.level * 8) * dmgMult;
+      const fireDmg = (10 + w.level * 8) * dmgMult * (w.evolved ? 1.5 : 1);
       enemies.forEach(e => {
         const edx = e.x - pl.x, edy = e.y - pl.y;
         if (edx*edx + edy*edy < rangeSq) {
           e.hp -= fireDmg; e.hitTimer = 0.1;
+          if (w.evolved) e.slowTimer = 1;
           spawnParticles(e.x, e.y, '#e76f51', 1);
           spawnDamageNumber(e.x, e.y, fireDmg, '#e76f51');
         }
@@ -1066,7 +1087,11 @@ function updateWeapons(pl, speedDt) {
       enemies.forEach(e => { const dx = e.x - pl.x, dy = e.y - pl.y; const dSq = dx*dx + dy*dy; if (dSq < minDistSq) { minDistSq = dSq; nearest = e; } });
       if (nearest) {
         const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x);
-        projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 15*dmgMult, life: 1.5, color: '#ffffff', radius: 8, emoji: '🕸️', slow: true, hitList: [] });
+        const num = w.evolved ? 3 : 1;
+        for(let i=0; i<num; i++){
+            const a = angle + (i-(num-1)/2)*0.3;
+            projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(a)*15, vy: Math.sin(a)*15, damage: 15*dmgMult, life: 1.5, color: '#ffffff', radius: 8, emoji: '🕸️', slow: true, hitList: [] });
+        }
         w.cdTimer = isMax ? 0.1 : w.cd;
       }
     }
@@ -1076,7 +1101,11 @@ function updateWeapons(pl, speedDt) {
       enemies.forEach(e => { const dx = e.x - pl.x, dy = e.y - pl.y; const dSq = dx*dx + dy*dy; if (dSq < minDistSq) { minDistSq = dSq; nearest = e; } });
       if (nearest) {
         const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x);
-        projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*22, vy: Math.sin(angle)*22, damage: 25*dmgMult, life: 1.0, color: '#1a1a1a', radius: 10, emoji: '⚫', lifesteal: true, owner: pl, hitList: [] });
+        const num = w.evolved ? 5 : 1;
+        for(let i=0; i<num; i++) {
+            const a = angle + (i-(num-1)/2)*0.2;
+            projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(a)*22, vy: Math.sin(a)*22, damage: 25*dmgMult, life: 1.0, color: '#1a1a1a', radius: 10, emoji: '⚫', lifesteal: true, owner: pl, hitList: [] });
+        }
         w.cdTimer = isMax ? 0.1 : w.cd;
       }
     }
@@ -1092,17 +1121,21 @@ function updateWeapons(pl, speedDt) {
       enemies.forEach(e => { const dx = e.x - pl.x, dy = e.y - pl.y; const dSq = dx*dx + dy*dy; if (dSq < minDistSq) { minDistSq = dSq; nearest = e; } });
       if (nearest) {
         const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x);
-        projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*18, vy: Math.sin(angle)*18, damage: 20*dmgMult, life: 2, color: '#f4a261', radius: 10, emoji: '🪃', hitList: [], boomerang: true, originX: pl.x, originY: pl.y, phase: 1 });
+        const num = w.evolved ? 3 : 1;
+        for(let i=0; i<num; i++){
+            const a = angle + (i-(num-1)/2)*0.4;
+            projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(a)*18, vy: Math.sin(a)*18, damage: 20*dmgMult, life: 2, color: '#f4a261', radius: 10, emoji: '🪃', hitList: [], boomerang: true, originX: pl.x, originY: pl.y, phase: 1 });
+        }
         w.cdTimer = isMax ? 0.1 : w.cd;
       }
     }
 
     if (w.id === 'lightning' && w.cdTimer <= 0) {
-      const numStrikes = isMax ? 5 : Math.ceil(w.level / 2);
+      const numStrikes = isMax ? 5 : Math.ceil(w.level / 2) * (w.evolved ? 2 : 1);
       for(let i=0; i<numStrikes; i++){
         const rndEnemy = enemies[Math.floor(Math.random() * enemies.length)];
         if(rndEnemy) {
-          rndEnemy.hp -= 30*dmgMult; rndEnemy.hitTimer = 0.1;
+          rndEnemy.hp -= 30*dmgMult * (w.evolved ? 2 : 1); rndEnemy.hitTimer = 0.1;
           spawnParticles(rndEnemy.x, rndEnemy.y, '#e9c46a', 3);
           spawnDamageNumber(rndEnemy.x, rndEnemy.y, 30*dmgMult, '#e9c46a');
         }
@@ -1111,10 +1144,10 @@ function updateWeapons(pl, speedDt) {
     }
 
     if (w.id === 'raygun') {
-      const numRays = 1 + Math.floor(w.level / 2);
+      const numRays = 1 + Math.floor(w.level / 2) + (w.evolved ? 2 : 0);
       for (let r = 0; r < numRays; r++) {
         const rayAngle = (Date.now() / 1000) * (1 + w.level*0.1) + (r * Math.PI * 2 / numRays);
-        const rayLength = 150 + w.level * 20;
+        const rayLength = (150 + w.level * 20) * (w.evolved ? 1.5 : 1);
         enemies.forEach(e => {
           const edx = e.x - pl.x, edy = e.y - pl.y;
           const distToPlayer = Math.sqrt(edx*edx + edy*edy);
@@ -1133,8 +1166,8 @@ function updateWeapons(pl, speedDt) {
     }
 
     if (w.id === 'orb' && w.level > 0) {
-      const num = isMax ? Math.min(w.level + 3, 8) : Math.min(w.level, 5);
-      const orbRadius = 90 + (w.level * 5);
+      const num = (isMax ? Math.min(w.level + 3, 8) : Math.min(w.level, 5)) + (w.evolved ? 2 : 0);
+      const orbRadius = (90 + (w.level * 5)) * (w.evolved ? 1.2 : 1);
       const orbAngleBase = (Date.now() / 400);
       const orbDmg = (8 + w.level * 4) * dmgMult;
       for (let i = 0; i < num; i++) {
@@ -1151,6 +1184,31 @@ function updateWeapons(pl, speedDt) {
         });
       }
     }
+
+    if (w.id === 'wand' && w.cdTimer <= 0) {
+      let nearest = null, minDistSq = Infinity;
+      enemies.forEach(e => { const dx = e.x - pl.x, dy = e.y - pl.y; const dSq = dx*dx + dy*dy; if (dSq < minDistSq) { minDistSq = dSq; nearest = e; } });
+      if (nearest) {
+        const angle = Math.atan2(nearest.y - pl.y, nearest.x - pl.x);
+        const num = w.evolved ? 5 : Math.min(1 + Math.floor(w.level / 3), 3);
+        for (let i = 0; i < num; i++) {
+          const spread = (i - (num-1)/2) * 0.15;
+          projectiles.push({ 
+            x: pl.x, y: pl.y, 
+            vx: Math.cos(angle + spread) * (25 + w.level), 
+            vy: Math.sin(angle + spread) * (25 + w.level), 
+            damage: (18 + w.level * 8) * dmgMult, 
+            life: 1.5, 
+            color: w.evolved ? '#00ff00' : '#8b0000', 
+            radius: 6, 
+            emoji: w.evolved ? '💀' : '✨', 
+            hitList: [], 
+            pierce: w.evolved 
+          });
+        }
+        w.cdTimer = isMax ? 0.1 : w.cd;
+      }
+    }
   });
 }
 
@@ -1159,10 +1217,23 @@ function update(dt) {
   const speedDt = dt * gameSpeed;
   gameTime += speedDt;
 
-  if (gameTime > recordTime) {
-    recordTime = gameTime;
-    safeStorage.setItem('neon_record', recordTime);
-  }
+  if (gameTime > recordTime) { recordTime = gameTime; safeStorage.setItem('neon_record', recordTime); }
+
+  // Logica Omnitrix Timer
+  [p1, p2].forEach(pl => {
+    if (pl && pl.isOmnitrix && pl.hp > 0) {
+      pl.omniTimer += speedDt;
+      if (pl.omniTimer > 15 && pl.unlockedForms < omniForms.length) {
+        pl.omniTimer = 0;
+        pl.unlockedForms++;
+        const form = omniForms[pl.unlockedForms - 1];
+        document.getElementById('bonus-alert').textContent = `NUOVA FORMA: ${form.name} ${form.emoji}!`;
+        document.getElementById('bonus-alert').style.display = 'block';
+        setTimeout(() => document.getElementById('bonus-alert').style.display = 'none', 2000);
+        playSound(1000, 'sine', 0.5, 0.1, 400);
+      }
+    }
+  });
 
   if (floorBannerTimer > 0) {
     floorBannerTimer -= speedDt;
@@ -1219,10 +1290,7 @@ function update(dt) {
     if (p1Vector.x !== 0 || p1Vector.y !== 0) { dx = p1Vector.x; dy = p1Vector.y; }
     const len = Math.sqrt(dx*dx + dy*dy);
     
-    if (len > 0) {
-      p1.facingX = dx / len;
-      p1.facingY = dy / len;
-    }
+    if (len > 0) { p1.facingX = dx / len; p1.facingY = dy / len; }
 
     if (p1.isDashing) {
       p1.x += p1.dashDir.x * p1.speed * 3 * speedDt * 60;
@@ -1249,10 +1317,7 @@ function update(dt) {
     if (p2Vector.x !== 0 || p2Vector.y !== 0) { dx = p2Vector.x; dy = p2Vector.y; }
     const len = Math.sqrt(dx*dx + dy*dy);
 
-    if (len > 0) {
-      p2.facingX = dx / len;
-      p2.facingY = dy / len;
-    }
+    if (len > 0) { p2.facingX = dx / len; p2.facingY = dy / len; }
 
     if (p2.isDashing) {
       p2.x += p2.dashDir.x * p2.speed * 3 * speedDt * 60;
@@ -1334,15 +1399,11 @@ function update(dt) {
 
       let hitWall = false;
       for (const w of walls) {
-        if (p.x > w.x - p.radius && p.x < w.x + w.w + p.radius && p.y > w.y - p.radius && p.y < w.y + w.h + p.radius) {
-          hitWall = true; break;
-        }
+        if (p.x > w.x - p.radius && p.x < w.x + w.w + p.radius && p.y > w.y - p.radius && p.y < w.y + w.h + p.radius) { hitWall = true; break; }
       }
       let hitEnemy = false;
       for (const e of enemies) {
-        if (Math.hypot(e.x - p.x, e.y - p.y) < e.radius + p.radius) {
-          hitEnemy = true; break;
-        }
+        if (Math.hypot(e.x - p.x, e.y - p.y) < e.radius + p.radius) { hitEnemy = true; break; }
       }
 
       if ((p.life <= 0 || hitWall || hitEnemy) && !p.exploded) {
@@ -1470,7 +1531,7 @@ function update(dt) {
         if (p1 && p1.hp > 0 && Math.hypot(p1.x-e.x, p1.y-e.y) < 100) p1.hp -= 20 * (1 - p1.armor);
         if (p2 && p2.hp > 0 && Math.hypot(p2.x-e.x, p2.y-e.y) < 100) p2.hp -= 20 * (1 - p2.armor);
       }
-      if (e.type === 'boss') {
+      if (e.type === 'boss' || e.type === 'titan') {
         chests.push({ x: e.x, y: e.y, radius: 20 });
         camera.shake = 10;
         if(p1) p1.hp = Math.min(p1.maxHp, p1.hp + 50);
@@ -1506,7 +1567,7 @@ function update(dt) {
     let currentSpeed = e.speed;
     if (e.slowTimer > 0) currentSpeed *= 0.4;
 
-    if (e.type === 'boss' && e.hp < e.maxHp / 2 && e.phase === 1) {
+    if ((e.type === 'boss' || e.type === 'titan') && e.hp < e.maxHp / 2 && e.phase === 1) {
       e.phase = 2; e.color = '#ff0000'; e.speed *= 1.5; camera.shake = 15;
     }
 
@@ -1533,6 +1594,32 @@ function update(dt) {
           enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle+spread)*8, vy: Math.sin(angle+spread)*8, radius: 8, damage: 8, life: 3, color: e.phase === 2 ? '#ff0000' : '#3a86ff', emoji: '🔵' });
         }
         e.shootTimer = (e.type === 'boss' && e.phase === 2) ? 1 : 2;
+      }
+    } else if (e.type === 'titan') {
+      const edx = targetP.x - e.x, edy = targetP.y - e.y;
+      if (edx*edx + edy*edy > 40000) { 
+        e.x += Math.cos(angle) * currentSpeed * speedDt * 60;
+        e.y += Math.sin(angle) * currentSpeed * speedDt * 60;
+      }
+      
+      e.actionTimer -= speedDt;
+      if (e.actionTimer <= 0) {
+        e.actionTimer = 1.5; 
+        const attackType = Math.floor(Math.random() * 3);
+        
+        if (attackType === 0) { // Arrow fan
+          for (let s = -2; s <= 2; s++) {
+            const spread = s * 0.25;
+            enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle+spread)*10, vy: Math.sin(angle+spread)*10, radius: 8, damage: 15, life: 3, color: '#2ecc71', emoji: '➡️' });
+          }
+        } else if (attackType === 1) { // Poison splash
+          for (let s = 0; s < 3; s++) {
+            const targetAngle = angle + (s - 1) * 0.5;
+            enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(targetAngle)*8, vy: Math.sin(targetAngle)*8, radius: 10, damage: 10, life: 2, color: '#3ecfe0', emoji: '🧪', isEnemyPotion: true, blastRadius: 50 });
+          }
+        } else { // TNT throw
+          enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*12, vy: Math.sin(angle)*12, radius: 12, damage: 30, life: 2, color: '#d90429', emoji: '💣', isEnemyTNT: true, blastRadius: 80 });
+        }
       }
     } else {
       e.x += Math.cos(angle) * currentSpeed * speedDt * 60;
@@ -1582,6 +1669,25 @@ function update(dt) {
   for (let i = enemyBullets.length - 1; i >= 0; i--) {
     const b = enemyBullets[i];
     b.x += b.vx * speedDt * 60; b.y += b.vy * speedDt * 60; b.life -= speedDt;
+    
+    if (b.isEnemyPotion && b.life <= 0) {
+      potionClouds.push({ x: b.x, y: b.y, radius: b.blastRadius, life: 2, owner: null, damage: 15, tickTimer: 0 });
+      spawnParticles(b.x, b.y, '#3ecfe0', 5);
+      enemyBullets.splice(i, 1); continue;
+    }
+    if (b.isEnemyTNT && b.life <= 0) {
+      if (p1 && p1.hp>0 && Math.hypot(p1.x-b.x, p1.y-b.y) < b.blastRadius) {
+         p1.hp -= b.damage * (1-p1.armor);
+         document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0.8)';
+         setTimeout(()=>document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)', 200);
+      }
+      if (p2 && p2.hp>0 && Math.hypot(p2.x-b.x, p2.y-b.y) < b.blastRadius) p2.hp -= b.damage * (1-p2.armor);
+      spawnParticles(b.x, b.y, '#ff6600', 15);
+      camera.shake = 10;
+      playSound(200, 'sawtooth', 0.3, 0.1, -100);
+      enemyBullets.splice(i, 1); continue;
+    }
+
     let hitP = false;
     if (p1.hp > 0 && Math.hypot(p1.x - b.x, p1.y - b.y) < (p1.radius + b.radius)) {
       if (p1.invuln <= 0 && maxPowerTimer <= 0 && !p1.isDashing) { p1.hp -= b.damage * (1 - p1.armor); p1.invuln = 1.5; hitP = true; }
@@ -1631,7 +1737,8 @@ function update(dt) {
       if (Math.hypot(pl.x - b.x, pl.y - b.y) < (pl.radius + b.radius)) { collected = true; break; }
     }
     if (collected) {
-      maxPowerTimer = 15; bonuses.splice(i, 1); document.getElementById('bonus-alert').style.display = 'block';
+      maxPowerTimer = 15; bonuses.splice(i, 1); document.getElementById('bonus-alert').textContent = `MAX POTENZA!`;
+      document.getElementById('bonus-alert').style.display = 'block';
       playSound(600, 'sine', 0.2, 0.05, 400);
     }
   }
@@ -1693,20 +1800,18 @@ function generateChoices() {
   if (p2) p2.weapons.forEach(w => { if (!allWeapons.find(aw => aw.id === w.id)) allWeapons.push(w); });
 
   Object.values(weaponTypes).forEach(wt => { 
-    if (!allWeapons.find(w => w.id === wt.id) && !banishedChoices.includes(wt.id)) choices.push({ id: wt.id + '_new', type: 'new', data: { ...wt, level: 1 } }); 
+    if (!allWeapons.find(w => w.id === wt.id) && !banishedChoices.includes(wt.id) && wt.id !== 'fist') choices.push({ id: wt.id + '_new', type: 'new', data: { ...wt, level: 1 } }); 
   });
 
   allWeapons.forEach(w => { 
-    if (w.level < w.maxLevel && !banishedChoices.includes(w.id + '_up')) choices.push({ id: w.id + '_up', type: 'upgrade', data: w }); 
+    if (w.level < w.maxLevel && !banishedChoices.includes(w.id + '_up') && w.id !== 'fist') choices.push({ id: w.id + '_up', type: 'upgrade', data: w }); 
   });
   
   allWeapons.forEach(w => {
-    if (w.level >= w.maxLevel && !w.evolved) {
+    if (w.level >= w.maxLevel && !w.evolved && w.id !== 'fist') {
       let evoId = w.id + '_evo';
       if (!banishedChoices.includes(evoId)) {
-        if (w.id !== 'orb' && w.id !== 'book' && w.id !== 'fire' && w.id !== 'web' && w.id !== 'symbiote' && w.id !== 'spirit' && w.id !== 'boomerang' && w.id !== 'lightning' && w.id !== 'raygun' && w.id !== 'potion' && w.id !== 'tnt') {
-          choices.push({ id: evoId, type: 'evo', data: w });
-        }
+        choices.push({ id: evoId, type: 'evo', data: w });
       }
     }
   });
@@ -1739,9 +1844,9 @@ function openChest() {
   if (p2) p2.weapons.forEach(w => { if (!allWeapons.find(aw => aw.id === w.id)) allWeapons.push(w); });
 
   allWeapons.forEach(w => {
-    if (w.level >= w.maxLevel && !w.evolved) {
+    if (w.level >= w.maxLevel && !w.evolved && w.id !== 'fist') {
       let evoId = w.id + '_evo';
-      if (w.id !== 'orb' && w.id !== 'book' && w.id !== 'fire' && w.id !== 'web' && w.id !== 'symbiote' && w.id !== 'spirit' && w.id !== 'boomerang' && w.id !== 'lightning' && w.id !== 'raygun' && w.id !== 'potion' && w.id !== 'tnt') choices.push({ id: evoId, type: 'evo', data: w });
+      if (w.id !== 'fist') choices.push({ id: evoId, type: 'evo', data: w });
     }
   });
   if (choices.length === 0) { choices = generateChoices(); } else { choices.sort(() => Math.random() - 0.5); if(choices.length > 3) choices = choices.slice(0, 3); }
@@ -1819,18 +1924,17 @@ function applyUpgrade(opt) {
       if (w) { w.level = Math.max(w.level, targetLevel); w.cd *= 0.92; } 
       else {
         const nw = JSON.parse(JSON.stringify(opt.data));
-        nw.level = targetLevel;
-        nw.cd = opt.data.cd * 0.92;
+        nw.level = targetLevel; nw.cd = opt.data.cd * 0.92;
         pl.weapons.push(nw);
       }
     }
     else if (opt.type === 'evo') { 
       const w = pl.weapons.find(w => w.id === opt.data.id);
-      if (w) { w.evolved = true; w.name = w.id === 'sword' ? 'Spada Divina' : 'Cannone Laser'; }
+      if (w) { w.evolved = true; w.name = w.id === 'sword' ? 'Spada Divina' : w.name + ' EVO'; }
     }
     else if (opt.type === 'stat') {
-      if (opt.data.stat === 'speed') pl.speed *= 1.1;
-      if (opt.data.stat === 'hp') pl.hp = Math.min(pl.maxHp, pl.hp + 50);
+      if (opt.data.stat === 'speed') { pl.speed *= 1.1; pl.baseSpeed *= 1.1; }
+      if (opt.data.stat === 'hp') { pl.hp = Math.min(pl.maxHp, pl.hp + 50); pl.baseHp += 50; pl.maxHp += 50; }
       if (opt.data.stat === 'magnet') pl.magnetRange += 30;
       if (opt.data.stat === 'armor') pl.armor = Math.min(0.8, pl.armor + 0.15);
     }
@@ -1843,28 +1947,16 @@ function drawWall(w) {
   const baseCol = isBorder ? '#3a3a44' : '#4a4a5a';
   const darkCol = isBorder ? '#24242a' : '#2e2e3a';
   const lightCol = isBorder ? '#52525e' : '#6a6a7a';
-  ctx.fillStyle = baseCol;
-  ctx.fillRect(w.x, w.y, w.w, w.h);
-  ctx.fillStyle = darkCol;
-  ctx.fillRect(w.x, w.y + w.h - 6, w.w, 6);
-  ctx.fillStyle = lightCol;
-  ctx.fillRect(w.x, w.y, w.w, 3);
-  ctx.strokeStyle = darkCol;
-  ctx.lineWidth = 2;
+  ctx.fillStyle = baseCol; ctx.fillRect(w.x, w.y, w.w, w.h);
+  ctx.fillStyle = darkCol; ctx.fillRect(w.x, w.y + w.h - 6, w.w, 6);
+  ctx.fillStyle = lightCol; ctx.fillRect(w.x, w.y, w.w, 3);
+  ctx.strokeStyle = darkCol; ctx.lineWidth = 2;
   const brickW = 30, brickH = 15;
   for (let by = w.y; by < w.y + w.h; by += brickH) {
     const offset = (Math.floor((by - w.y) / brickH) % 2) * (brickW / 2);
     for (let bx = w.x - offset; bx < w.x + w.w; bx += brickW) {
-      ctx.beginPath();
-      ctx.moveTo(Math.max(bx, w.x), by);
-      ctx.lineTo(Math.min(bx + brickW, w.x + w.w), by);
-      ctx.stroke();
-      if (bx > w.x && bx < w.x + w.w) {
-        ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(bx, Math.min(by + brickH, w.y + w.h));
-        ctx.stroke();
-      }
+      ctx.beginPath(); ctx.moveTo(Math.max(bx, w.x), by); ctx.lineTo(Math.min(bx + brickW, w.x + w.w), by); ctx.stroke();
+      if (bx > w.x && bx < w.x + w.w) { ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, Math.min(by + brickH, w.y + w.h)); ctx.stroke(); }
     }
   }
 }
@@ -1878,17 +1970,14 @@ function draw() {
   ctx.save();
   ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
   
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'; ctx.lineWidth = 1;
   const startX = Math.floor(camera.x / 60) * 60, startY = Math.floor(camera.y / 60) * 60;
   for (let x = startX; x < camera.x + W; x += 60) { ctx.beginPath(); ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y + H); ctx.stroke(); }
   for (let y = startY; y < camera.y + H; y += 60) { ctx.beginPath(); ctx.moveTo(camera.x, y); ctx.lineTo(camera.x + W, y); ctx.stroke(); }
 
   if (currentGameMode === 'tower') {
-    ctx.fillStyle = '#25252d';
-    ctx.fillRect(-400, -300, 800, 600);
-    ctx.strokeStyle = 'rgba(255, 102, 196, 0.15)';
-    ctx.lineWidth = 2;
+    ctx.fillStyle = '#25252d'; ctx.fillRect(-400, -300, 800, 600);
+    ctx.strokeStyle = 'rgba(255, 102, 196, 0.15)'; ctx.lineWidth = 2;
     for (let x = -400; x <= 400; x += 40) { ctx.beginPath(); ctx.moveTo(x, -300); ctx.lineTo(x, 300); ctx.stroke(); }
     for (let y = -300; y <= 300; y += 40) { ctx.beginPath(); ctx.moveTo(-400, y); ctx.lineTo(400, y); ctx.stroke(); }
   }
@@ -1897,71 +1986,39 @@ function draw() {
 
   potionClouds.forEach(c => {
     const alpha = c.life / 2.5 * 0.5;
-    ctx.fillStyle = `rgba(62, 207, 224, ${alpha})`;
-    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = `rgba(62, 207, 224, ${alpha * 1.5})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = `rgba(62, 207, 224, ${alpha})`; ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = `rgba(62, 207, 224, ${alpha * 1.5})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2); ctx.stroke();
   });
 
   if (portal) {
     const pulse = Math.sin(portal.phase * 3) * 0.3 + 1;
-    ctx.fillStyle = `rgba(255, 102, 196, ${0.3 * pulse})`;
-    ctx.beginPath(); ctx.arc(portal.x, portal.y, portal.radius * 1.5, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = `rgba(255, 102, 196, ${0.6 * pulse})`;
-    ctx.beginPath(); ctx.arc(portal.x, portal.y, portal.radius, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(portal.x, portal.y, portal.radius * 0.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = `rgba(255, 102, 196, ${0.3 * pulse})`; ctx.beginPath(); ctx.arc(portal.x, portal.y, portal.radius * 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = `rgba(255, 102, 196, ${0.6 * pulse})`; ctx.beginPath(); ctx.arc(portal.x, portal.y, portal.radius, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(portal.x, portal.y, portal.radius * 0.5, 0, Math.PI*2); ctx.fill();
   }
 
-  chests.forEach(c => {
-    drawEmoji(ctx, '📦', c.x, c.y, 36);
-  });
-  bonuses.forEach(b => {
-    drawEmoji(ctx, '🌟', b.x, b.y, 36);
-  });
-  
-  minions.forEach(m => {
-    drawEmoji(ctx, m.emoji || '👻', m.x, m.y, m.isKing ? 36 : 24);
-  });
-  
-  orbs.forEach(o => {
-    ctx.fillStyle = '#4cc9f0';
-    ctx.beginPath(); ctx.arc(o.x, o.y, o.radius, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(o.x - 1, o.y - 1, o.radius * 0.4, 0, Math.PI*2); ctx.fill();
-  });
+  chests.forEach(c => { drawEmoji(ctx, '📦', c.x, c.y, 36); });
+  bonuses.forEach(b => { drawEmoji(ctx, '🌟', b.x, b.y, 36); });
+  minions.forEach(m => { drawEmoji(ctx, m.emoji || '👻', m.x, m.y, m.isKing ? 36 : 24); });
+  orbs.forEach(o => { ctx.fillStyle = '#4cc9f0'; ctx.beginPath(); ctx.arc(o.x, o.y, o.radius, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(o.x - 1, o.y - 1, o.radius * 0.4, 0, Math.PI*2); ctx.fill(); });
   particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1; });
   
   projectiles.forEach(p => {
-    if (p.emoji) {
-      drawEmoji(ctx, p.emoji, p.x, p.y, p.radius * 2.5);
-    } else {
-      ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
-    }
+    if (p.emoji) drawEmoji(ctx, p.emoji, p.x, p.y, p.radius * 2.5);
+    else { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); }
   });
 
-  enemyBullets.forEach(b => {
-    drawEmoji(ctx, b.emoji || '🔵', b.x, b.y, b.radius * 2.5);
-  });
+  enemyBullets.forEach(b => { drawEmoji(ctx, b.emoji || '🔵', b.x, b.y, b.radius * 2.5); });
 
   enemies.forEach(e => {
     if (e.hitTimer > 0) {
-      ctx.globalAlpha = 0.5;
-      drawEmoji(ctx, e.emoji, e.x, e.y, e.radius * 2.5);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 0.5; drawEmoji(ctx, e.emoji, e.x, e.y, e.radius * 2.5); ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill();
     } else {
       drawEmoji(ctx, e.emoji, e.x, e.y, e.radius * 2.5);
-      if (e.slowTimer > 0) {
-        ctx.fillStyle = 'rgba(136, 204, 255, 0.4)';
-        ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill();
-      }
+      if (e.slowTimer > 0) { ctx.fillStyle = 'rgba(136, 204, 255, 0.4)'; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill(); }
     }
-    
-    if (e.type === 'boss') {
+    if (e.type === 'boss' || e.type === 'titan') {
       ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(e.x - e.radius, e.y - e.radius - 15, e.radius*2, 5);
       ctx.fillStyle = '#e76f51'; ctx.fillRect(e.x - e.radius, e.y - e.radius - 15, e.radius*2 * (e.hp / e.maxHp), 5);
     }
@@ -1970,23 +2027,22 @@ function draw() {
   if (p1 && p1.hp > 0) {
     const orbW = p1.weapons.find(w => w.id === 'orb');
     if (orbW && orbW.level > 0) {
-      const num = maxPowerTimer > 0 ? Math.min(orbW.level + 3, 8) : Math.min(orbW.level, 5); 
-      const orbRadius = 90 + (orbW.level * 5); 
+      const num = (maxPowerTimer > 0 ? Math.min(orbW.level + 3, 8) : Math.min(orbW.level, 5)) + (orbW.evolved ? 2 : 0);
+      const orbRadius = (90 + (orbW.level * 5)) * (orbW.evolved ? 1.2 : 1);
       for (let i = 0; i < num; i++) {
         const angle = (Date.now() / 400) + (i * Math.PI * 2 / num); 
-        const ox = p1.x + Math.cos(angle) * orbRadius, oy = p1.y + Math.sin(angle) * orbRadius;
-        drawEmoji(ctx, '💠', ox, oy, 24);
+        drawEmoji(ctx, '💠', p1.x + Math.cos(angle) * orbRadius, p1.y + Math.sin(angle) * orbRadius, 24);
       }
     }
     const fireW = p1.weapons.find(w => w.id === 'fire');
-    if (fireW && fireW.level > 0) { ctx.fillStyle = `rgba(231, 111, 81, ${0.05 + fireW.level*0.02})`; ctx.beginPath(); ctx.arc(p1.x, p1.y, 50 + fireW.level*25, 0, Math.PI*2); ctx.fill(); }
+    if (fireW && fireW.level > 0) { ctx.fillStyle = `rgba(231, 111, 81, ${0.05 + fireW.level*0.02})`; ctx.beginPath(); ctx.arc(p1.x, p1.y, (50 + fireW.level*25) * (fireW.evolved ? 1.5 : 1), 0, Math.PI*2); ctx.fill(); }
     const rayW = p1.weapons.find(w => w.id === 'raygun');
     if (rayW && rayW.level > 0) {
-      const numRays = 1 + Math.floor(rayW.level / 2);
+      const numRays = 1 + Math.floor(rayW.level / 2) + (rayW.evolved ? 2 : 0);
       for (let r = 0; r < numRays; r++) {
         const rayAngle = (Date.now() / 1000) * (1 + rayW.level*0.1) + (r * Math.PI * 2 / numRays);
-        const rayLength = 150 + rayW.level * 20;
-        ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)'; ctx.lineWidth = 6 + rayW.level * 0.5; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p1.x + Math.cos(rayAngle) * rayLength, p1.y + Math.sin(rayAngle) * rayLength); ctx.stroke();
+        const rayLength = (150 + rayW.level * 20) * (rayW.evolved ? 1.5 : 1);
+        ctx.strokeStyle = rayW.evolved ? 'rgba(255, 0, 0, 0.6)' : 'rgba(0, 255, 255, 0.5)'; ctx.lineWidth = 6 + rayW.level * 0.5; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p1.x + Math.cos(rayAngle) * rayLength, p1.y + Math.sin(rayAngle) * rayLength); ctx.stroke();
       }
     }
 
@@ -2000,23 +2056,22 @@ function draw() {
   if (p2 && p2.hp > 0) {
     const orbW = p2.weapons.find(w => w.id === 'orb');
     if (orbW && orbW.level > 0) {
-      const num = maxPowerTimer > 0 ? Math.min(orbW.level + 3, 8) : Math.min(orbW.level, 5); 
-      const orbRadius = 90 + (orbW.level * 5); 
+      const num = (maxPowerTimer > 0 ? Math.min(orbW.level + 3, 8) : Math.min(orbW.level, 5)) + (orbW.evolved ? 2 : 0);
+      const orbRadius = (90 + (orbW.level * 5)) * (orbW.evolved ? 1.2 : 1);
       for (let i = 0; i < num; i++) {
         const angle = (Date.now() / 400) + (i * Math.PI * 2 / num); 
-        const ox = p2.x + Math.cos(angle) * orbRadius, oy = p2.y + Math.sin(angle) * orbRadius;
-        drawEmoji(ctx, '💠', ox, oy, 24);
+        drawEmoji(ctx, '💠', p2.x + Math.cos(angle) * orbRadius, p2.y + Math.sin(angle) * orbRadius, 24);
       }
     }
     const fireW = p2.weapons.find(w => w.id === 'fire');
-    if (fireW && fireW.level > 0) { ctx.fillStyle = `rgba(231, 111, 81, ${0.05 + fireW.level*0.02})`; ctx.beginPath(); ctx.arc(p2.x, p2.y, 50 + fireW.level*25, 0, Math.PI*2); ctx.fill(); }
+    if (fireW && fireW.level > 0) { ctx.fillStyle = `rgba(231, 111, 81, ${0.05 + fireW.level*0.02})`; ctx.beginPath(); ctx.arc(p2.x, p2.y, (50 + fireW.level*25) * (fireW.evolved ? 1.5 : 1), 0, Math.PI*2); ctx.fill(); }
     const rayW = p2.weapons.find(w => w.id === 'raygun');
     if (rayW && rayW.level > 0) {
-      const numRays = 1 + Math.floor(rayW.level / 2);
+      const numRays = 1 + Math.floor(rayW.level / 2) + (rayW.evolved ? 2 : 0);
       for (let r = 0; r < numRays; r++) {
         const rayAngle = (Date.now() / 1000) * (1 + rayW.level*0.1) + (r * Math.PI * 2 / numRays);
-        const rayLength = 150 + rayW.level * 20;
-        ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)'; ctx.lineWidth = 6 + rayW.level * 0.5; ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p2.x + Math.cos(rayAngle) * rayLength, p2.y + Math.sin(rayAngle) * rayLength); ctx.stroke();
+        const rayLength = (150 + rayW.level * 20) * (rayW.evolved ? 1.5 : 1);
+        ctx.strokeStyle = rayW.evolved ? 'rgba(255, 0, 0, 0.6)' : 'rgba(0, 255, 255, 0.5)'; ctx.lineWidth = 6 + rayW.level * 0.5; ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p2.x + Math.cos(rayAngle) * rayLength, p2.y + Math.sin(rayAngle) * rayLength); ctx.stroke();
       }
     }
 
@@ -2033,15 +2088,11 @@ function draw() {
     ctx.fillStyle = 'rgba(100, 150, 255, 0.2)';
     for(let i=0; i<30; i++) ctx.fillRect((Date.now()/10 + i*50) % W, (Date.now()/5 + i*100) % H, 2, 15);
   } else if (currentWeather === 'fog') {
-    ctx.fillStyle = 'rgba(200, 200, 200, 0.15)';
-    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.15)'; ctx.fillRect(0,0,W,H);
   }
 
   damageNumbers.forEach(d => {
-    ctx.globalAlpha = d.life;
-    ctx.fillStyle = d.color;
-    ctx.font = 'bold 14px monospace';
-    ctx.textAlign = 'center';
+    ctx.globalAlpha = d.life; ctx.fillStyle = d.color; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
     ctx.fillText(d.text, d.x - Math.round(camera.x), d.y - Math.round(camera.y));
     ctx.globalAlpha = 1;
   });
@@ -2055,27 +2106,32 @@ function loop(time) {
   requestAnimationFrame(loop);
 }
 
-/* ============================================================
-   PWA (Solo prompt di installazione e Service Worker)
-   ============================================================ */
+function generateAppIcon(size) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d');
+  x.fillStyle = '#1e1e24'; x.fillRect(0, 0, size, size);
+  const cx = size/2, cy = size/2;
+  x.strokeStyle = '#4cc9f0'; x.lineWidth = size * 0.045; x.beginPath(); x.arc(cx, cy, size * 0.34, 0, Math.PI*2); x.stroke();
+  x.strokeStyle = '#f4a261'; x.lineWidth = size * 0.022; x.beginPath(); x.arc(cx, cy, size * 0.23, 0, Math.PI*2); x.stroke();
+  const grad = x.createRadialGradient(cx, cy, 0, cx, cy, size * 0.16);
+  grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.5, '#f4a261'); grad.addColorStop(1, '#d16ba5');
+  x.fillStyle = grad; x.beginPath(); x.arc(cx, cy, size * 0.16, 0, Math.PI*2); x.fill();
+  return c.toDataURL('image/png');
+}
+
 function setupPWA() {
-  let deferredPrompt = null;
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); deferredPrompt = e;
-    document.getElementById('install-btn').classList.add('show');
-  });
-  window.installPWA = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') document.getElementById('install-btn').classList.remove('show');
-    deferredPrompt = null;
-  };
-  window.addEventListener('appinstalled', () => document.getElementById('install-btn').classList.remove('show'));
+  try {
+    const icon192 = generateAppIcon(192); const icon512 = generateAppIcon(512);
+    const manifest = { name: "Neon Survivors", short_name: "NeonSurv", description: "Survivor roguelike", start_url: window.location.href, scope: window.location.pathname, display: "fullscreen", orientation: "any", background_color: "#1e1e24", theme_color: "#4cc9f0", icons: [{ src: icon192, sizes: "192x192", type: "image/png", purpose: "any" }, { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }] };
+    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    const link = document.createElement('link'); link.rel = 'manifest'; link.href = URL.createObjectURL(manifestBlob); document.head.appendChild(link);
+    const ai = document.createElement('link'); ai.rel = 'apple-touch-icon'; ai.href = icon192; document.head.appendChild(ai);
+  } catch(e) {}
   
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('install-btn').classList.add('show'); });
+  window.installPWA = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') document.getElementById('install-btn').classList.remove('show'); deferredPrompt = null; };
+  window.addEventListener('appinstalled', () => document.getElementById('install-btn').classList.remove('show'));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
 initCharSelect();
