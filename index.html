@@ -8,6 +8,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- QUI C'È LA RIGA AGGIUNTA PER PWABUILDER -->
+<link rel="manifest" href="manifest.json">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none; background: #1e1e24; font-family: 'Segoe UI', sans-serif; color: #e0e0e0; }
@@ -2054,48 +2056,9 @@ function loop(time) {
 }
 
 /* ============================================================
-   PWA
+   PWA (Solo prompt di installazione e Service Worker)
    ============================================================ */
-function generateAppIcon(size) {
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const x = c.getContext('2d');
-  x.fillStyle = '#1e1e24'; x.fillRect(0, 0, size, size);
-  const cx = size/2, cy = size/2;
-  x.strokeStyle = '#4cc9f0'; x.lineWidth = size * 0.045;
-  x.beginPath(); x.arc(cx, cy, size * 0.34, 0, Math.PI*2); x.stroke();
-  x.strokeStyle = '#f4a261'; x.lineWidth = size * 0.022;
-  x.beginPath(); x.arc(cx, cy, size * 0.23, 0, Math.PI*2); x.stroke();
-  const grad = x.createRadialGradient(cx, cy, 0, cx, cy, size * 0.16);
-  grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.5, '#f4a261'); grad.addColorStop(1, '#d16ba5');
-  x.fillStyle = grad; x.beginPath(); x.arc(cx, cy, size * 0.16, 0, Math.PI*2); x.fill();
-  return c.toDataURL('image/png');
-}
-
 function setupPWA() {
-  try {
-    const icon192 = generateAppIcon(192);
-    const icon512 = generateAppIcon(512);
-    const manifest = {
-      name: "Neon Survivors", short_name: "NeonSurv",
-      description: "Survivor roguelike",
-      start_url: window.location.href, scope: window.location.pathname,
-      display: "fullscreen", orientation: "any",
-      background_color: "#1e1e24", theme_color: "#4cc9f0",
-      icons: [
-        { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
-        { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
-      ]
-    };
-    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-    const link = document.createElement('link');
-    link.rel = 'manifest'; link.href = URL.createObjectURL(manifestBlob);
-    document.head.appendChild(link);
-    const ai = document.createElement('link');
-    ai.rel = 'apple-touch-icon'; ai.href = icon192;
-    document.head.appendChild(ai);
-  } catch(e) {}
-  
   let deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); deferredPrompt = e;
