@@ -1,0 +1,20 @@
+{
+  "name": "Neon Survivors",
+  "short_name": "NeonSurv",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "background_color": "#1e1e24",
+  "theme_color": "#4cc9f0",
+  "icons": [
+    {
+      "src": "https://lucaliu2010-prog.github.io/neon-survivors/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://lucaliu2010-prog.github.io/neon-survivors/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
