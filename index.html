@@ -234,7 +234,6 @@ function playSound(freq, type, dur, vol, slide=0) {
   } catch(e){}
 }
 
-// FIX: Inizializzazione sicura per evitare crash da vecchi salvataggi
 let meta = { coins: 0, hpLvl: 0, spdLvl: 0, rerolls: 0 };
 try {
   let saved = JSON.parse(safeStorage.getItem('neon_meta'));
@@ -248,22 +247,13 @@ try {
 
 function saveMeta() { safeStorage.setItem('neon_meta', JSON.stringify(meta)); updateCoinUI(); }
 function updateCoinUI() {
-  const elCoin = document.getElementById('coin-text');
-  if (elCoin) elCoin.textContent = meta.coins;
-  const elTot = document.getElementById('coin-total');
-  if (elTot) elTot.textContent = meta.coins;
-  const elShop = document.getElementById('shop-coin-total');
-  if (elShop) elShop.textContent = meta.coins;
-  
-  const elHp = document.getElementById('lvl-hp');
-  if (elHp) elHp.textContent = meta.hpLvl;
-  const elSpd = document.getElementById('lvl-spd');
-  if (elSpd) elSpd.textContent = meta.spdLvl;
-  
-  const btnHp = document.getElementById('buy-hp');
-  if (btnHp) { btnHp.textContent = `Costo: ${100 + meta.hpLvl*50}`; btnHp.disabled = meta.coins < (100 + meta.hpLvl*50); }
-  const btnSpd = document.getElementById('buy-spd');
-  if (btnSpd) { btnSpd.textContent = `Costo: ${150 + meta.spdLvl*100}`; btnSpd.disabled = meta.coins < (150 + meta.spdLvl*100); }
+  const elCoin = document.getElementById('coin-text'); if (elCoin) elCoin.textContent = meta.coins;
+  const elTot = document.getElementById('coin-total'); if (elTot) elTot.textContent = meta.coins;
+  const elShop = document.getElementById('shop-coin-total'); if (elShop) elShop.textContent = meta.coins;
+  const elHp = document.getElementById('lvl-hp'); if (elHp) elHp.textContent = meta.hpLvl;
+  const elSpd = document.getElementById('lvl-spd'); if (elSpd) elSpd.textContent = meta.spdLvl;
+  const btnHp = document.getElementById('buy-hp'); if (btnHp) { btnHp.textContent = `Costo: ${100 + meta.hpLvl*50}`; btnHp.disabled = meta.coins < (100 + meta.hpLvl*50); }
+  const btnSpd = document.getElementById('buy-spd'); if (btnSpd) { btnSpd.textContent = `Costo: ${150 + meta.spdLvl*100}`; btnSpd.disabled = meta.coins < (150 + meta.spdLvl*100); }
 }
 function buyUpgrade(type) {
   if(type === 'hp' && meta.coins >= 100 + meta.hpLvl*50) { meta.coins -= 100 + meta.hpLvl*50; meta.hpLvl++; saveMeta(); } 
@@ -339,10 +329,8 @@ function updateSelectingUI() {
   if (currentMode === 2) {
     const tog = document.getElementById('player-select-toggle');
     if(tog) tog.style.display = 'block';
-    const btn1 = document.getElementById('sel-p1-btn');
-    if(btn1) btn1.classList.toggle('active', selectingPlayer === 1);
-    const btn2 = document.getElementById('sel-p2-btn');
-    if(btn2) btn2.classList.toggle('active', selectingPlayer === 2);
+    const btn1 = document.getElementById('sel-p1-btn'); if(btn1) btn1.classList.toggle('active', selectingPlayer === 1);
+    const btn2 = document.getElementById('sel-p2-btn'); if(btn2) btn2.classList.toggle('active', selectingPlayer === 2);
   } else {
     const tog = document.getElementById('player-select-toggle');
     if(tog) tog.style.display = 'none';
@@ -429,7 +417,8 @@ function createPlayer(charObj, xOffset) {
 }
 
 let p1 = null, p2 = null;
-let enemies = [], enemyBullets = [], orbs = [], projectiles = [], particles = [], minions = [], potionClouds = [];
+// FIX: Dichiarati tutti gli array globali!
+let enemies = [], enemyBullets = [], orbs = [], projectiles = [], particles = [], minions = [], potionClouds = [], chests = [], bonuses = [];
 let walls = [], portal = null, camera = { x: 0, y: 0, shake: 0 }, gameTime = 0;
 let isGameOver = false, isLevelUp = false, isChestOpen = false, isStarted = false, isPaused = false;
 let currentFloor = 1, floorEnemiesRemaining = 0, rerollsLeft = 0, banishedChoices = [], currentChoices = [];
@@ -529,7 +518,7 @@ function startGame() {
   if(document.getElementById('omnitrix-btn')) document.getElementById('omnitrix-btn').style.display = ((p1 && p1.isOmnitrix) || (p2 && p2.isOmnitrix)) ? 'flex' : 'none';
   if(document.getElementById('shield-btn')) document.getElementById('shield-btn').style.display = ((p1 && p1.isHarry) || (p2 && p2.isHarry)) ? 'flex' : 'none';
 
-  enemies = []; projectiles = []; particles = []; minions = []; potionClouds = []; walls = []; portal = null;
+  enemies = []; projectiles = []; particles = []; minions = []; potionClouds = []; chests = []; bonuses = []; walls = []; portal = null;
   gameTime = 0; isLevelUp = false; isChestOpen = false; isPaused = false; currentFloor = 1;
   camera = { x: -W/2, y: -H/2, shake: 0 }; updateInventory();
   if (currentGameMode === 'tower') generateFloor(1); else for(let i=0; i<5; i++) spawnEnemy();
