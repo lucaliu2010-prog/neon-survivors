@@ -623,7 +623,18 @@ function updateWeapons(pl, dt) {
     if (w.id === 'web') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 15, life: 1.5, emoji: '🕸️', radius: 8, hitList: [], slow: true, freeze: pl.currentFormIndex === 14 }); w.cdTimer = w.cd; }
     if (w.id === 'symbiote') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*22, vy: Math.sin(angle)*22, damage: 25, life: 1.0, emoji: '⚫', radius: 10, lifesteal: true, owner: pl, hitList: [] }); w.cdTimer = w.cd; }
     if (w.id === 'spirit') { if(minions.filter(m=>m.owner===pl).length < w.level) minions.push({ x: pl.x, y: pl.y, cdTimer: 0, isKing: false, owner: pl, emoji: '👻' }); w.cdTimer = w.cd; }
-    if (w.id === 'lightning') { for(let i=0;i<2;i++){ const e = enemies[Math.floor(Math.random()*enemies.length)]; if(e){ e.hp -= 30; e.hitTimer = 0.1; spawnParticles(e.x,e.y,'#e9c46a',3); } } w.cdTimer = w.cd; }
+    if (w.id === 'lightning') { 
+        for(let i=0;i<2;i++){ 
+            const e = enemies[Math.floor(Math.random()*enemies.length)]; 
+            if(e){ 
+                e.hp -= 30; e.hitTimer = 0.1; 
+                spawnParticles(e.x, e.y, '#e9c46a', 3); 
+                // Fulmine visivo
+                for(let j=0; j<5; j++) particles.push({ x: e.x + (Math.random()-0.5)*20, y: e.y - 100 + j*25, vx: (Math.random()-0.5)*5, vy: 10, life: 0.2, color: '#ffff00' });
+            } 
+        } 
+        w.cdTimer = w.cd; 
+    }
     if (w.id === 'raygun') {
       const rays = 1 + Math.floor(w.level/2) + (pl.currentFormIndex===15?4:0);
       for (let r = 0; r < rays; r++) {
@@ -992,10 +1003,42 @@ function draw() {
       
       if (pl.isOmnitrix && pl.currentFormIndex === 16) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(pl.x, pl.y, 150, 0, Math.PI*2); ctx.fill(); }
       
+      // FIRE AURA (Heatblast / Aura)
       const fireW = pl.weapons.find(w => w.id === 'fire');
       if (fireW && fireW.level > 0) { 
-          ctx.fillStyle = `rgba(231, 111, 81, ${0.05 + fireW.level*0.02})`; 
-          ctx.beginPath(); ctx.arc(pl.x, pl.y, 50 + fireW.level*20, 0, Math.PI*2); ctx.fill(); 
+          const radius = 50 + fireW.level*20;
+          ctx.fillStyle = `rgba(231, 111, 81, 0.2)`; 
+          ctx.beginPath(); ctx.arc(pl.x, pl.y, radius, 0, Math.PI*2); ctx.fill(); 
+          ctx.strokeStyle = `rgba(231, 111, 81, 0.6)`; 
+          ctx.lineWidth = 3; 
+          ctx.stroke();
+      }
+
+      // RAY GUN (Iron Man / Ray Gun)
+      const rayW = pl.weapons.find(w => w.id === 'raygun');
+      if (rayW && rayW.level > 0) {
+          const numRays = 1 + Math.floor(rayW.level / 2) + (pl.currentFormIndex === 15 ? 4 : 0);
+          for (let r = 0; r < numRays; r++) {
+              const a = (Date.now() / 1000) + (r * Math.PI * 2 / numRays);
+              const rayLength = 200; 
+              ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(pl.x, pl.y);
+              ctx.lineTo(pl.x + Math.cos(a) * rayLength, pl.y + Math.sin(a) * rayLength);
+              ctx.stroke();
+          }
+      }
+
+      // ORB (Sfera / Principessa)
+      const orbW = pl.weapons.find(w => w.id === 'orb');
+      if (orbW && orbW.level > 0) {
+          const num = 4 + orbW.level;
+          const r = 90 + orbW.level * 5;
+          for (let i = 0; i < num; i++) {
+              const a = (Date.now() / 400) + (i * Math.PI * 2 / num);
+              drawEmoji(ctx, '🔮', pl.x + Math.cos(a) * r, pl.y + Math.sin(a) * r, 24);
+          }
       }
       
       drawEmoji(ctx, pl.emoji, pl.x, pl.y, 44);
