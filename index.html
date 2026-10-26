@@ -234,25 +234,36 @@ function playSound(freq, type, dur, vol, slide=0) {
   } catch(e){}
 }
 
-// FIX: Inizializzazione sicura del salvataggio per evitare crash da vecchi dati
-let metaStr = safeStorage.getItem('neon_meta');
-let meta = metaStr ? JSON.parse(metaStr) : {};
-meta.coins = meta.coins || 0;
-meta.hpLvl = meta.hpLvl || 0;
-meta.spdLvl = meta.spdLvl || 0;
-meta.rerolls = meta.rerolls || 0;
+// FIX: Inizializzazione sicura per evitare crash da vecchi salvataggi
+let meta = { coins: 0, hpLvl: 0, spdLvl: 0, rerolls: 0 };
+try {
+  let saved = JSON.parse(safeStorage.getItem('neon_meta'));
+  if (saved) {
+    meta.coins = Number(saved.coins) || 0;
+    meta.hpLvl = Number(saved.hpLvl) || 0;
+    meta.spdLvl = Number(saved.spdLvl) || 0;
+    meta.rerolls = Number(saved.rerolls) || 0;
+  }
+} catch(e) {}
 
 function saveMeta() { safeStorage.setItem('neon_meta', JSON.stringify(meta)); updateCoinUI(); }
 function updateCoinUI() {
-  document.getElementById('coin-text').textContent = meta.coins;
-  document.getElementById('coin-total').textContent = meta.coins;
-  document.getElementById('shop-coin-total').textContent = meta.coins;
-  document.getElementById('lvl-hp').textContent = meta.hpLvl;
-  document.getElementById('lvl-spd').textContent = meta.spdLvl;
-  document.getElementById('buy-hp').textContent = `Costo: ${100 + meta.hpLvl*50}`;
-  document.getElementById('buy-hp').disabled = meta.coins < (100 + meta.hpLvl*50);
-  document.getElementById('buy-spd').textContent = `Costo: ${150 + meta.spdLvl*100}`;
-  document.getElementById('buy-spd').disabled = meta.coins < (150 + meta.spdLvl*100);
+  const elCoin = document.getElementById('coin-text');
+  if (elCoin) elCoin.textContent = meta.coins;
+  const elTot = document.getElementById('coin-total');
+  if (elTot) elTot.textContent = meta.coins;
+  const elShop = document.getElementById('shop-coin-total');
+  if (elShop) elShop.textContent = meta.coins;
+  
+  const elHp = document.getElementById('lvl-hp');
+  if (elHp) elHp.textContent = meta.hpLvl;
+  const elSpd = document.getElementById('lvl-spd');
+  if (elSpd) elSpd.textContent = meta.spdLvl;
+  
+  const btnHp = document.getElementById('buy-hp');
+  if (btnHp) { btnHp.textContent = `Costo: ${100 + meta.hpLvl*50}`; btnHp.disabled = meta.coins < (100 + meta.hpLvl*50); }
+  const btnSpd = document.getElementById('buy-spd');
+  if (btnSpd) { btnSpd.textContent = `Costo: ${150 + meta.spdLvl*100}`; btnSpd.disabled = meta.coins < (150 + meta.spdLvl*100); }
 }
 function buyUpgrade(type) {
   if(type === 'hp' && meta.coins >= 100 + meta.hpLvl*50) { meta.coins -= 100 + meta.hpLvl*50; meta.hpLvl++; saveMeta(); } 
@@ -309,8 +320,7 @@ function cycleOmnitrix(plIndex) {
   const allFormWeapons = omniForms.map(f => f.weapon);
   pl.weapons = pl.weapons.filter(w => !allFormWeapons.includes(w.id));
   let newW = JSON.parse(JSON.stringify(weaponTypes[form.weapon]));
-  newW.level = Math.min(10, Math.ceil(pl.level / 2));
-  pl.weapons.unshift(newW);
+  if(newW) { newW.level = Math.min(10, Math.ceil(pl.level / 2)); pl.weapons.unshift(newW); }
   
   updateInventory(); playSound(800, 'square', 0.2, 0.1, 400);
 }
@@ -319,17 +329,24 @@ function toggleShield(plIndex) {
   if (!pl || !pl.isHarry || pl.hp <= 0 || pl.shieldCd > 0) return;
   pl.shieldActive = 3.0; pl.shieldCd = 8.0;
   playSound(900, 'sine', 0.4, 0.1, 200);
-  document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(255, 215, 0, 0.6)';
-  setTimeout(()=>document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)', 200);
+  const vig = document.getElementById('vignette');
+  if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(255, 215, 0, 0.6)';
+  setTimeout(()=>{ if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)'; }, 200);
 }
 
 function setSelectingPlayer(p) { selectingPlayer = p; updateSelectingUI(); }
 function updateSelectingUI() {
   if (currentMode === 2) {
-    document.getElementById('player-select-toggle').style.display = 'block';
-    document.getElementById('sel-p1-btn').classList.toggle('active', selectingPlayer === 1);
-    document.getElementById('sel-p2-btn').classList.toggle('active', selectingPlayer === 2);
-  } else document.getElementById('player-select-toggle').style.display = 'none';
+    const tog = document.getElementById('player-select-toggle');
+    if(tog) tog.style.display = 'block';
+    const btn1 = document.getElementById('sel-p1-btn');
+    if(btn1) btn1.classList.toggle('active', selectingPlayer === 1);
+    const btn2 = document.getElementById('sel-p2-btn');
+    if(btn2) btn2.classList.toggle('active', selectingPlayer === 2);
+  } else {
+    const tog = document.getElementById('player-select-toggle');
+    if(tog) tog.style.display = 'none';
+  }
 }
 function initCharSelect() {
   const container = document.getElementById('char-select'); container.innerHTML = '';
@@ -395,11 +412,14 @@ const weaponTypes = {
 };
 
 function createPlayer(charObj, xOffset) {
-  let finalHp = charObj.hp + (meta.hpLvl * 20);
-  let finalSpeed = charObj.speed + (charObj.speed * (meta.spdLvl * 0.05));
+  let finalHp = Number(charObj.hp) + (Number(meta.hpLvl) * 20);
+  let finalSpeed = Number(charObj.speed) + (Number(charObj.speed) * (Number(meta.spdLvl) * 0.05));
+  if (isNaN(finalHp)) finalHp = 100;
+  if (isNaN(finalSpeed)) finalSpeed = 4.0;
+  
   return {
     x: xOffset, y: 0, speed: finalSpeed, baseSpeed: finalSpeed, radius: 14, hp: finalHp, maxHp: finalHp, baseHp: finalHp,
-    xp: 0, xpNext: 10, level: 1, weapons: [ JSON.parse(JSON.stringify(weaponTypes[charObj.startWeapon])) ],
+    xp: 0, xpNext: 10, level: 1, weapons: [ JSON.parse(JSON.stringify(weaponTypes[charObj.startWeapon] || weaponTypes['fist'])) ],
     invuln: 0, magnetRange: 150, color: '#fff', emoji: charObj.emoji,
     dashCd: 0, isDashing: false, dashTimer: 0, dashDir: {x:0, y:0}, facingX: 1, facingY: 0,
     isOmnitrix: charObj.isOmnitrix || false, unlockedForms: 1, currentFormIndex: 0, omniTimer: 0,
@@ -413,12 +433,13 @@ let enemies = [], enemyBullets = [], orbs = [], projectiles = [], particles = []
 let walls = [], portal = null, camera = { x: 0, y: 0, shake: 0 }, gameTime = 0;
 let isGameOver = false, isLevelUp = false, isChestOpen = false, isStarted = false, isPaused = false;
 let currentFloor = 1, floorEnemiesRemaining = 0, rerollsLeft = 0, banishedChoices = [], currentChoices = [];
-let uiUpdateTimer = 0; // FIX: Dichiarato correttamente
+let uiUpdateTimer = 0;
 let recordTime = parseFloat(safeStorage.getItem('neon_record') || "0");
-document.getElementById('record-text').textContent = Math.floor(recordTime);
+if(document.getElementById('record-text')) document.getElementById('record-text').textContent = Math.floor(recordTime);
 
 function setupJoystick(zoneId, baseId, stickId, vectorObj) {
   const zone = document.getElementById(zoneId), base = document.getElementById(baseId), stick = document.getElementById(stickId);
+  if (!zone || !base || !stick) return;
   let active = false, start = {x:0, y:0};
   zone.addEventListener('touchstart', e => { e.preventDefault(); active = true; const t = e.touches[0]; start = { x: t.clientX, y: t.clientY }; base.style.display = 'block'; base.style.left = t.clientX + 'px'; base.style.top = t.clientY + 'px'; stick.style.display = 'block'; stick.style.left = t.clientX + 'px'; stick.style.top = t.clientY + 'px'; }, { passive: false });
   zone.addEventListener('touchmove', e => { e.preventDefault(); if (!active) return; const t = e.touches[0]; let dx = t.clientX - start.x, dy = t.clientY - start.y; const d = Math.sqrt(dx*dx + dy*dy), maxD = 50; if (d > maxD) { dx = (dx/d) * maxD; dy = (dy/d) * maxD; } stick.style.left = (start.x + dx) + 'px'; stick.style.top = (start.y + dy) + 'px'; vectorObj.x = dx / maxD; vectorObj.y = dy / maxD; }, { passive: false });
@@ -427,8 +448,8 @@ function setupJoystick(zoneId, baseId, stickId, vectorObj) {
 let p1Vector = {x:0, y:0}, p2Vector = {x:0, y:0};
 setupJoystick('p1-joystick-zone', 'p1-base', 'p1-stick', p1Vector);
 setupJoystick('p2-joystick-zone', 'p2-base', 'p2-stick', p2Vector);
-document.getElementById('dash-btn-p1').addEventListener('touchstart', e => { e.preventDefault(); triggerDash(p1); }, { passive: false });
-document.getElementById('dash-btn-p2').addEventListener('touchstart', e => { e.preventDefault(); triggerDash(p2); }, { passive: false });
+if(document.getElementById('dash-btn-p1')) document.getElementById('dash-btn-p1').addEventListener('touchstart', e => { e.preventDefault(); triggerDash(p1); }, { passive: false });
+if(document.getElementById('dash-btn-p2')) document.getElementById('dash-btn-p2').addEventListener('touchstart', e => { e.preventDefault(); triggerDash(p2); }, { passive: false });
 
 window.addEventListener('keydown', e => {
   if(e.key === 'Escape' && isStarted && !isGameOver) togglePause();
@@ -487,7 +508,7 @@ function generateFloor(f) {
 }
 
 function spawnEnemy(x, y) {
-  const diff = diffSettings[currentDifficulty];
+  const diff = diffSettings[currentDifficulty] || diffSettings.normal;
   if (!x && !y) { const a = Math.random()*Math.PI*2, d = Math.max(W,H)*0.7; const c = getAliveCenter(); x = c.x + Math.cos(a)*d; y = c.y + Math.sin(a)*d; }
   const isBoss = gameTime > 30 && Math.random() < diff.boss;
   let e = { x, y, hp: (20 + gameTime)*diff.hp, maxHp: (20 + gameTime)*diff.hp, speed: 1.2*diff.spd, radius: 14, dmg: 10*diff.dmg, xp: 2, emoji: '👾', type: 'melee', shootTimer: 0, slowTimer: 0 };
@@ -500,13 +521,13 @@ function startGame() {
   document.getElementById('start-screen').classList.remove('show'); document.getElementById('gameover-screen').classList.remove('show');
   isStarted = true; isGameOver = false;
   document.body.className = (isTouchDevice ? 'touch-device ' : '') + `playing mode-${currentMode}`;
-  document.getElementById('p2-hp-container').style.display = currentMode === 2 ? 'block' : 'none';
+  if(document.getElementById('p2-hp-container')) document.getElementById('p2-hp-container').style.display = currentMode === 2 ? 'block' : 'none';
   
   p1 = createPlayer(characters[p1CharIndex], 0);
   p2 = currentMode === 2 ? createPlayer(characters[p2CharIndex], 60) : null;
   
-  document.getElementById('omnitrix-btn').style.display = ((p1 && p1.isOmnitrix) || (p2 && p2.isOmnitrix)) ? 'flex' : 'none';
-  document.getElementById('shield-btn').style.display = ((p1 && p1.isHarry) || (p2 && p2.isHarry)) ? 'flex' : 'none';
+  if(document.getElementById('omnitrix-btn')) document.getElementById('omnitrix-btn').style.display = ((p1 && p1.isOmnitrix) || (p2 && p2.isOmnitrix)) ? 'flex' : 'none';
+  if(document.getElementById('shield-btn')) document.getElementById('shield-btn').style.display = ((p1 && p1.isHarry) || (p2 && p2.isHarry)) ? 'flex' : 'none';
 
   enemies = []; projectiles = []; particles = []; minions = []; potionClouds = []; walls = []; portal = null;
   gameTime = 0; isLevelUp = false; isChestOpen = false; isPaused = false; currentFloor = 1;
@@ -517,7 +538,9 @@ function startGame() {
 function returnToHome() {
   document.getElementById('gameover-screen').classList.remove('show'); document.getElementById('start-screen').classList.add('show');
   isStarted = false; isGameOver = false; document.body.className = isTouchDevice ? 'touch-device' : '';
-  document.getElementById('omnitrix-btn').style.display = 'none'; document.getElementById('shield-btn').style.display = 'none'; updateCoinUI();
+  if(document.getElementById('omnitrix-btn')) document.getElementById('omnitrix-btn').style.display = 'none';
+  if(document.getElementById('shield-btn')) document.getElementById('shield-btn').style.display = 'none';
+  updateCoinUI();
 }
 function quitToHome() { if (confirm("Vuoi tornare alla Home?")) { meta.coins += Math.floor(gameTime/5) + p1.killCount*2; saveMeta(); returnToHome(); } }
 function togglePause() { if(!isGameOver && !isLevelUp && !isChestOpen) { isPaused = !isPaused; document.getElementById('pause-screen').classList.toggle('show', isPaused); } }
@@ -534,8 +557,8 @@ function updateInventory() {
 
 function getAliveCenter() {
   let cx = 0, cy = 0, n = 0;
-  if (p1 && p1.hp > 0) { cx += p1.x; cy += p1.y; n++; }
-  if (p2 && p2.hp > 0) { cx += p2.x; cy += p2.y; n++; }
+  if (p1 && p1.hp > 0 && !isNaN(p1.x)) { cx += p1.x; cy += p1.y; n++; }
+  if (p2 && p2.hp > 0 && !isNaN(p2.x)) { cx += p2.x; cy += p2.y; n++; }
   return n === 0 ? { x: 0, y: 0 } : { x: cx/n, y: cy/n };
 }
 
@@ -552,7 +575,7 @@ function updateWeapons(pl, dt) {
     if (pl.invisTimer > 0) { pl.invisTimer -= dt; pl.invuln = Math.max(pl.invuln, 0.1); }
     else if (pl.hp < pl.maxHp * 0.3 && pl.passiveTimer <= 0) { 
         pl.invisTimer = 3; pl.passiveTimer = 15; pl.hp += 50; if(pl.hp>pl.maxHp)pl.hp=pl.maxHp; 
-        document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(255, 255, 255, 0.5)'; setTimeout(()=>document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)', 500);
+        const vig = document.getElementById('vignette'); if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(255, 255, 255, 0.5)'; setTimeout(()=>{ if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)'; }, 500);
     }
     if (pl.passiveTimer > 0) pl.passiveTimer -= dt;
     
@@ -570,7 +593,7 @@ function updateWeapons(pl, dt) {
             pl.passiveTimer = 10;
             enemies.forEach(e => { if (e.hp > 0) { e.hp -= 200; e.hitTimer = 0.2; spawnParticles(e.x, e.y, '#ff1493', 5); } });
             camera.shake = 20; playSound(100, 'sawtooth', 1, 0.2, -50);
-            document.getElementById('vignette').style.boxShadow = 'inset 0 0 200px rgba(255, 20, 147, 0.8)'; setTimeout(()=>document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)', 500);
+            const vig = document.getElementById('vignette'); if(vig) vig.style.boxShadow = 'inset 0 0 200px rgba(255, 20, 147, 0.8)'; setTimeout(()=>{ if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)'; }, 500);
         }
     }
   }
@@ -621,15 +644,14 @@ function update(dt) {
   gameTime += dt;
   if (Math.floor(gameTime) > recordTime) { recordTime = Math.floor(gameTime); safeStorage.setItem('neon_record', recordTime); }
   
-  // FIX: UI Update del timer e delle barre
   uiUpdateTimer -= dt;
   if(uiUpdateTimer <= 0) {
       const mins = Math.floor(gameTime / 60).toString().padStart(2, '0');
       const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
-      document.getElementById('timer').textContent = `${mins}:${secs}`;
-      document.getElementById('hp-bar').style.width = Math.max(0, (p1.hp / p1.maxHp) * 100) + '%';
-      if (p2) document.getElementById('hp-bar-p2').style.width = Math.max(0, (p2.hp / p2.maxHp) * 100) + '%';
-      document.getElementById('xp-bar').style.width = Math.min(100, (p1.xp / p1.xpNext) * 100) + '%';
+      const elTime = document.getElementById('timer'); if(elTime) elTime.textContent = `${mins}:${secs}`;
+      const elHp = document.getElementById('hp-bar'); if(elHp && p1) elHp.style.width = Math.max(0, (p1.hp / p1.maxHp) * 100) + '%';
+      if (p2) { const elHp2 = document.getElementById('hp-bar-p2'); if(elHp2) elHp2.style.width = Math.max(0, (p2.hp / p2.maxHp) * 100) + '%'; }
+      const elXp = document.getElementById('xp-bar'); if(elXp && p1) elXp.style.width = Math.min(100, (p1.xp / p1.xpNext) * 100) + '%';
       uiUpdateTimer = 0.25;
   }
 
@@ -638,7 +660,7 @@ function update(dt) {
       pl.omniTimer += dt;
       if (pl.omniTimer > 10 && pl.unlockedForms < omniForms.length) {
         pl.omniTimer = 0; pl.unlockedForms++;
-        document.getElementById('vignette').style.boxShadow = 'inset 0 0 100px rgba(0, 255, 0, 0.6)'; setTimeout(()=>document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)', 200);
+        const vig = document.getElementById('vignette'); if(vig) vig.style.boxShadow = 'inset 0 0 100px rgba(0, 255, 0, 0.6)'; setTimeout(()=>{ if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)'; }, 200);
       }
     }
   });
@@ -655,12 +677,13 @@ function update(dt) {
     if (pl.isDashing) { pl.x += pl.dashDir.x * pl.speed * 3 * dt * 60; pl.y += pl.dashDir.y * pl.speed * 3 * dt * 60; }
     else if (len > 0) { pl.x += (vx/len) * pl.speed * dt * 60; pl.y += (vy/len) * pl.speed * dt * 60; }
     if (pl.invuln > 0) pl.invuln -= dt;
+    if (isNaN(pl.x)) pl.x = 0; if (isNaN(pl.y)) pl.y = 0;
     resolveWallCollision(pl);
   });
 
   const c = getAliveCenter();
-  camera.x = c.x - W/2 + (Math.random()-0.5)*camera.shake;
-  camera.y = c.y - H/2 + (Math.random()-0.5)*camera.shake;
+  camera.x = isNaN(c.x) ? -W/2 : c.x - W/2 + (Math.random()-0.5)*camera.shake;
+  camera.y = isNaN(c.y) ? -H/2 : c.y - H/2 + (Math.random()-0.5)*camera.shake;
 
   if (currentGameMode === 'endless' && Math.random() < dt * (2 + gameTime * 0.1)) spawnEnemy();
 
@@ -763,7 +786,7 @@ function update(dt) {
       if(target.isOmnitrix && target.currentFormIndex === 5) { } 
       else {
         target.hp -= e.dmg; target.invuln = 1.5; camera.shake = 5;
-        document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0.6)'; setTimeout(()=>document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)', 200);
+        const vig = document.getElementById('vignette'); if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0.6)'; setTimeout(()=>{ if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)'; }, 200);
       }
     }
   }
@@ -914,8 +937,8 @@ function applyUpgrade(opt) {
 function draw() {
   ctx.fillStyle = '#1e1e24'; ctx.fillRect(0, 0, W, H);
   ctx.save(); 
-  if (isNaN(camera.x) || isNaN(camera.y)) { camera.x = 0; camera.y = 0; } // FIX anti-crash NaN
-  ctx.translate(-camera.x, -camera.y);
+  if (isNaN(camera.x) || isNaN(camera.y)) { camera.x = -W/2; camera.y = -H/2; }
+  ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
   
   ctx.strokeStyle = 'rgba(255,255,255,0.03)';
   for (let x = Math.floor(camera.x/60)*60; x < camera.x+W; x+=60) { ctx.beginPath(); ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y+H); ctx.stroke(); }
@@ -942,7 +965,7 @@ function draw() {
   });
 
   [p1, p2].forEach(pl => {
-    if (pl && pl.hp > 0 && !isNaN(pl.x) && !isNaN(pl.y)) {
+    if (pl && pl.hp > 0) {
       if (pl.isHarry && pl.shieldActive > 0) { ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pl.x, pl.y, pl.radius+12, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = 'rgba(255, 215, 0, 0.2)'; ctx.beginPath(); ctx.arc(pl.x, pl.y, pl.radius+12, 0, Math.PI*2); ctx.fill(); }
       if (pl.isHarry && pl.invisTimer > 0) ctx.globalAlpha = 0.3;
       if (pl.isOmnitrix && pl.currentFormIndex === 16) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(pl.x, pl.y, 150, 0, Math.PI*2); ctx.fill(); }
@@ -955,7 +978,12 @@ function draw() {
 }
 
 let lastT = 0;
-function loop(t) { const dt = Math.min((t-lastT)/1000, 0.1); lastT = t; update(dt); draw(); requestAnimationFrame(loop); }
+function loop(t) { 
+    const dt = Math.min((t-lastT)/1000, 0.1); lastT = t; 
+    try { update(dt); } catch(e) { console.error("Update error:", e); }
+    try { draw(); } catch(e) { console.error("Draw error:", e); }
+    requestAnimationFrame(loop); 
+}
 
 initCharSelect(); updateSelectingUI(); requestAnimationFrame(loop); updateCoinUI();
 </script>
