@@ -1,4 +1,4 @@
-const CACHE = 'neon-survivors-v8';
+const CACHE = 'neon-survivors-v9';
 const FILES = ['./', './index.html'];
 
 self.addEventListener('install', e => {
