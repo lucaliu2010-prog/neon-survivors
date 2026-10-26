@@ -234,7 +234,14 @@ function playSound(freq, type, dur, vol, slide=0) {
   } catch(e){}
 }
 
-let meta = safeStorage.getItem('neon_meta') ? JSON.parse(safeStorage.getItem('neon_meta')) : { coins: 0, hpLvl: 0, spdLvl: 0, rerolls: 0 };
+// FIX: Inizializzazione sicura del salvataggio per evitare crash da vecchi dati
+let metaStr = safeStorage.getItem('neon_meta');
+let meta = metaStr ? JSON.parse(metaStr) : {};
+meta.coins = meta.coins || 0;
+meta.hpLvl = meta.hpLvl || 0;
+meta.spdLvl = meta.spdLvl || 0;
+meta.rerolls = meta.rerolls || 0;
+
 function saveMeta() { safeStorage.setItem('neon_meta', JSON.stringify(meta)); updateCoinUI(); }
 function updateCoinUI() {
   document.getElementById('coin-text').textContent = meta.coins;
@@ -296,12 +303,13 @@ function cycleOmnitrix(plIndex) {
   if (!pl || !pl.isOmnitrix || pl.unlockedForms <= 1 || pl.hp <= 0) return;
   pl.currentFormIndex = (pl.currentFormIndex + 1) % pl.unlockedForms;
   const form = omniForms[pl.currentFormIndex];
+  if (!form) return;
   pl.emoji = form.emoji; pl.maxHp = Math.floor(pl.baseHp * form.hpMult); pl.hp = Math.min(pl.hp, pl.maxHp); pl.speed = pl.baseSpeed * form.spdMult;
   
   const allFormWeapons = omniForms.map(f => f.weapon);
   pl.weapons = pl.weapons.filter(w => !allFormWeapons.includes(w.id));
   let newW = JSON.parse(JSON.stringify(weaponTypes[form.weapon]));
-  newW.level = Math.min(10, Math.ceil(pl.level / 2)); // Armi forme scalano col livello
+  newW.level = Math.min(10, Math.ceil(pl.level / 2));
   pl.weapons.unshift(newW);
   
   updateInventory(); playSound(800, 'square', 0.2, 0.1, 400);
@@ -405,6 +413,7 @@ let enemies = [], enemyBullets = [], orbs = [], projectiles = [], particles = []
 let walls = [], portal = null, camera = { x: 0, y: 0, shake: 0 }, gameTime = 0;
 let isGameOver = false, isLevelUp = false, isChestOpen = false, isStarted = false, isPaused = false;
 let currentFloor = 1, floorEnemiesRemaining = 0, rerollsLeft = 0, banishedChoices = [], currentChoices = [];
+let uiUpdateTimer = 0; // FIX: Dichiarato correttamente
 let recordTime = parseFloat(safeStorage.getItem('neon_record') || "0");
 document.getElementById('record-text').textContent = Math.floor(recordTime);
 
@@ -612,6 +621,18 @@ function update(dt) {
   gameTime += dt;
   if (Math.floor(gameTime) > recordTime) { recordTime = Math.floor(gameTime); safeStorage.setItem('neon_record', recordTime); }
   
+  // FIX: UI Update del timer e delle barre
+  uiUpdateTimer -= dt;
+  if(uiUpdateTimer <= 0) {
+      const mins = Math.floor(gameTime / 60).toString().padStart(2, '0');
+      const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
+      document.getElementById('timer').textContent = `${mins}:${secs}`;
+      document.getElementById('hp-bar').style.width = Math.max(0, (p1.hp / p1.maxHp) * 100) + '%';
+      if (p2) document.getElementById('hp-bar-p2').style.width = Math.max(0, (p2.hp / p2.maxHp) * 100) + '%';
+      document.getElementById('xp-bar').style.width = Math.min(100, (p1.xp / p1.xpNext) * 100) + '%';
+      uiUpdateTimer = 0.25;
+  }
+
   [p1, p2].forEach(pl => {
     if (pl && pl.isOmnitrix && pl.hp > 0) {
       pl.omniTimer += dt;
@@ -692,7 +713,7 @@ function update(dt) {
     for (let e of enemies) {
       if (e.hp > 0 && p.hitList && !p.hitList.includes(e) && Math.hypot(e.x-p.x, e.y-p.y) < e.radius + p.radius) {
         let dmg = p.damage;
-        if (p.owner && p.owner.isOmnitrix && p.owner.currentFormIndex === 9 && e.hp < e.maxHp*0.3) dmg *= 2; // Ripjaws
+        if (p.owner && p.owner.isOmnitrix && p.owner.currentFormIndex === 9 && e.hp < e.maxHp*0.3) dmg *= 2;
         e.hp -= dmg; e.hitTimer = 0.1; spawnParticles(p.x, p.y, p.color, 2);
         if (p.slow) { if (p.freeze) e.slowTimer = 100; else e.slowTimer = 2; }
         if (p.lifesteal && p.owner) p.owner.hp = Math.min(p.owner.maxHp, p.owner.hp + 2);
@@ -739,7 +760,7 @@ function update(dt) {
     e.x += Math.cos(angle) * spd; e.y += Math.sin(angle) * spd;
     
     if (Math.hypot(e.x-target.x, e.y-target.y) < e.radius + target.radius && target.invuln <= 0 && target.invisTimer <= 0) {
-      if(target.isOmnitrix && target.currentFormIndex === 5) { /* Ghostfreak */ } 
+      if(target.isOmnitrix && target.currentFormIndex === 5) { } 
       else {
         target.hp -= e.dmg; target.invuln = 1.5; camera.shake = 5;
         document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0.6)'; setTimeout(()=>document.getElementById('vignette').style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)', 200);
@@ -892,7 +913,9 @@ function applyUpgrade(opt) {
 
 function draw() {
   ctx.fillStyle = '#1e1e24'; ctx.fillRect(0, 0, W, H);
-  ctx.save(); ctx.translate(-camera.x, -camera.y);
+  ctx.save(); 
+  if (isNaN(camera.x) || isNaN(camera.y)) { camera.x = 0; camera.y = 0; } // FIX anti-crash NaN
+  ctx.translate(-camera.x, -camera.y);
   
   ctx.strokeStyle = 'rgba(255,255,255,0.03)';
   for (let x = Math.floor(camera.x/60)*60; x < camera.x+W; x+=60) { ctx.beginPath(); ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y+H); ctx.stroke(); }
@@ -906,8 +929,11 @@ function draw() {
   particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 3, 3); ctx.globalAlpha = 1; });
   
   minions.forEach(m => drawEmoji(ctx, m.emoji||'👻', m.x, m.y, 30));
-  projectiles.forEach(p => drawEmoji(ctx, p.emoji, p.x, p.y, p.radius*2.5));
-  enemyBullets.forEach(b => drawEmoji(ctx, b.emoji||'🔵', b.x, b.y, b.radius*2.5));
+  projectiles.forEach(p => {
+      if (p.emoji) drawEmoji(ctx, p.emoji, p.x, p.y, p.radius * 2.5);
+      else { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); }
+  });
+  enemyBullets.forEach(b => drawEmoji(ctx, b.emoji||'🔵', b.x, b.y, b.radius * 2.5));
   
   enemies.forEach(e => {
     drawEmoji(ctx, e.emoji, e.x, e.y, e.radius*2.5);
@@ -916,7 +942,7 @@ function draw() {
   });
 
   [p1, p2].forEach(pl => {
-    if (pl && pl.hp > 0) {
+    if (pl && pl.hp > 0 && !isNaN(pl.x) && !isNaN(pl.y)) {
       if (pl.isHarry && pl.shieldActive > 0) { ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pl.x, pl.y, pl.radius+12, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = 'rgba(255, 215, 0, 0.2)'; ctx.beginPath(); ctx.arc(pl.x, pl.y, pl.radius+12, 0, Math.PI*2); ctx.fill(); }
       if (pl.isHarry && pl.invisTimer > 0) ctx.globalAlpha = 0.3;
       if (pl.isOmnitrix && pl.currentFormIndex === 16) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(pl.x, pl.y, 150, 0, Math.PI*2); ctx.fill(); }
