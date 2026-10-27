@@ -402,7 +402,7 @@ const weaponTypes = {
   pistol: { id: 'pistol', name: 'Pistola', icon: '🔫', color: '#f4a261', level: 1, maxLevel: 10, cd: 0.4, cdTimer: 0 },
   orb: { id: 'orb', name: 'Sfera', icon: '🔮', color: '#ff66c4', level: 1, maxLevel: 10, cd: 0, cdTimer: 0 },
   book: { id: 'book', name: 'Libro', icon: '📖', color: '#9b5de5', level: 1, maxLevel: 10, cd: 1.8, cdTimer: 0 },
-  fire: { id: 'fire', name: 'Aura', icon: '🔥', color: '#e76f51', level: 1, maxLevel: 10, cd: 0.3, cdTimer: 0 },
+  fire: { id: 'fire', name: 'Aura', icon: '🔥', color: '#e76f51', level: 1, maxLevel: 10, cd: 0, cdTimer: 0 },
   web: { id: 'web', name: 'Ragnatela', icon: '🕸️', color: '#e63946', level: 1, maxLevel: 10, cd: 0.8, cdTimer: 0 },
   symbiote: { id: 'symbiote', name: 'Simbiota', icon: '🖤', color: '#1a1a1a', level: 1, maxLevel: 10, cd: 0.5, cdTimer: 0 },
   spirit: { id: 'spirit', name: 'Spirito', icon: '👻', color: '#2a9d8f', level: 1, maxLevel: 10, cd: 1.0, cdTimer: 0 },
@@ -570,29 +570,29 @@ function spawnParticles(x, y, color, count) {
   for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 0.5, color });
 }
 
-function updateWeapons(pl, dt) {
+function updateWeapons(pl, sd) {
   if (!pl || pl.hp <= 0) return;
   
   if (pl.isHarry) {
-    if (pl.shieldCd > 0) pl.shieldCd -= dt;
-    if (pl.shieldActive > 0) pl.shieldActive -= dt;
-    if (pl.invisTimer > 0) { pl.invisTimer -= dt; pl.invuln = Math.max(pl.invuln, 0.1); }
+    if (pl.shieldCd > 0) pl.shieldCd -= sd;
+    if (pl.shieldActive > 0) pl.shieldActive -= sd;
+    if (pl.invisTimer > 0) { pl.invisTimer -= sd; pl.invuln = Math.max(pl.invuln, 0.1); }
     else if (pl.hp < pl.maxHp * 0.3 && pl.passiveTimer <= 0) { 
         pl.invisTimer = 3; pl.passiveTimer = 15; pl.hp += 50; if(pl.hp>pl.maxHp)pl.hp=pl.maxHp; 
         const vig = document.getElementById('vignette'); if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(255, 255, 255, 0.5)'; setTimeout(()=>{ if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)'; }, 500);
     }
-    if (pl.passiveTimer > 0) pl.passiveTimer -= dt;
+    if (pl.passiveTimer > 0) pl.passiveTimer -= sd;
     
-    pl.omniTimer -= dt;
+    pl.omniTimer -= sd;
     if (pl.omniTimer <= 0) { pl.omniTimer = 10; minions.push({ x: pl.x, y: pl.y, owner: pl, isPatronus: true, cdTimer: 0, emoji: '🦌', isKing: false }); }
   }
 
   if (pl.isOmnitrix) {
-    if (pl.currentFormIndex === 11) pl.hp = Math.min(pl.maxHp, pl.hp + 1 * dt); // Swampfire
+    if (pl.currentFormIndex === 11) pl.hp = Math.min(pl.maxHp, pl.hp + 1 * sd); // Swampfire
     if (pl.currentFormIndex === 16) enemies.forEach(e => { if(Math.hypot(e.x-pl.x, e.y-pl.y) < 150) e.slowTimer = 0.5; }); // Alien X
     
     if (pl.currentFormIndex === 15) { // Way Big
-        pl.passiveTimer -= dt;
+        pl.passiveTimer -= sd;
         if (pl.passiveTimer <= 0) {
             pl.passiveTimer = 10;
             enemies.forEach(e => { if (e.hp > 0) { e.hp -= 200; e.hitTimer = 0.2; spawnParticles(e.x, e.y, '#ff1493', 5); } });
@@ -603,7 +603,7 @@ function updateWeapons(pl, dt) {
   }
 
   pl.weapons.forEach(w => {
-    w.cdTimer -= dt;
+    w.cdTimer -= sd;
     if (w.cdTimer > 0) return;
 
     let nearest = null, minDist = Infinity;
@@ -611,16 +611,27 @@ function updateWeapons(pl, dt) {
     if (!nearest && w.id !== 'fire' && w.id !== 'orb' && w.id !== 'raygun') return;
     const angle = nearest ? Math.atan2(nearest.y - pl.y, nearest.x - pl.x) : 0;
 
-    if (w.id === 'fist') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 15+w.level*5, life: 0.2, emoji: '💥', color: '#fff', radius: 15, hitList: [] }); w.cdTimer = w.cd; }
+    if (w.id === 'fist') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 15+w.level*5, life: 0.2, emoji: '💥', color: '#fff', radius: 15, hitList: [], owner: pl }); w.cdTimer = w.cd; }
     if (w.id === 'sword') { if (minDist < 120) { nearest.hp -= 20+w.level*10; nearest.hitTimer = 0.1; spawnParticles(nearest.x, nearest.y, '#4cc9f0', 3); } w.cdTimer = w.cd; }
-    if (w.id === 'bow') { for(let i=-1;i<=1;i++) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle+i*0.1)*20, vy: Math.sin(angle+i*0.1)*20, damage: 15+w.level*5, life: 1.5, emoji: '➡️', color: '#2ecc71', radius: 5, hitList: [] }); w.cdTimer = w.cd; }
-    if (w.id === 'dagger') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*30, vy: Math.sin(angle)*30, damage: 10+w.level*5, life: 0.5, emoji: '🗡️', color: '#e63946', radius: 5, hitList: [] }); w.cdTimer = w.cd; }
+    if (w.id === 'bow') { for(let i=-1;i<=1;i++) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle+i*0.1)*20, vy: Math.sin(angle+i*0.1)*20, damage: 15+w.level*5, life: 1.5, emoji: '➡️', color: '#2ecc71', radius: 5, hitList: [], owner: pl }); w.cdTimer = w.cd; }
+    if (w.id === 'dagger') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*30, vy: Math.sin(angle)*30, damage: 10+w.level*5, life: 0.5, emoji: '🗡️', color: '#e63946', radius: 5, hitList: [], owner: pl }); w.cdTimer = w.cd; }
     if (w.id === 'potion') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*12, vy: Math.sin(angle)*12, damage: 5, life: 0.8, emoji: '🧪', isPotion: true, potionLevel: w.level, owner: pl, radius: 8, hitList: [] }); w.cdTimer = w.cd; }
     if (w.id === 'tnt') { let vx = pl.facingX, vy = pl.facingY; if(vx===0&&vy===0){vx=Math.cos(angle);vy=Math.sin(angle);} projectiles.push({ x: pl.x, y: pl.y, vx: vx*15, vy: vy*15, damage: 40+w.level*20, life: 1.5, emoji: '💣', isTNT: true, blastRadius: 100, owner: pl, radius: 10, hitList: [] }); w.cdTimer = w.cd; }
-    if (w.id === 'pistol') { if (pl.currentFormIndex === 4) { for(let i=0;i<2;i++) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle+i*0.2)*20, vy: Math.sin(angle+i*0.2)*20, damage: 10+w.level*5, life: 1.5, emoji: '⚪', bounce: true, bouncesLeft: 2, radius: 6, hitList: [] }); } else projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*20, vy: Math.sin(angle)*20, damage: 10+w.level*5, life: 1.5, emoji: '⚪', radius: 6, hitList: [] }); w.cdTimer = w.cd; }
-    if (w.id === 'book') { for(let i=0;i<8;i++) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(i/8*Math.PI*2)*12, vy: Math.sin(i/8*Math.PI*2)*12, damage: 5+w.level*4, life: 2, emoji: '🔮', radius: 6, hitList: [], pierce: true }); w.cdTimer = w.cd; }
-    if (w.id === 'fire') { const r = 50 + w.level*20; enemies.forEach(e => { if(Math.hypot(e.x-pl.x, e.y-pl.y) < r) { e.hp -= (10+w.level*5)*dt*3; e.hitTimer = 0.1; } }); w.cdTimer = 0.1; }
-    if (w.id === 'web') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 15, life: 1.5, emoji: '🕸️', radius: 8, hitList: [], slow: true, freeze: pl.currentFormIndex === 14 }); w.cdTimer = w.cd; }
+    if (w.id === 'pistol') { if (pl.currentFormIndex === 4) { for(let i=0;i<2;i++) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle+i*0.2)*20, vy: Math.sin(angle+i*0.2)*20, damage: 10+w.level*5, life: 1.5, emoji: '⚪', bounce: true, bouncesLeft: 2, radius: 6, hitList: [], owner: pl }); } else projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*20, vy: Math.sin(angle)*20, damage: 10+w.level*5, life: 1.5, emoji: '⚪', radius: 6, hitList: [], owner: pl }); w.cdTimer = w.cd; }
+    if (w.id === 'book') { for(let i=0;i<8;i++) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(i/8*Math.PI*2)*12, vy: Math.sin(i/8*Math.PI*2)*12, damage: 5+w.level*4, life: 2, emoji: '🔮', radius: 6, hitList: [], pierce: true, owner: pl }); w.cdTimer = w.cd; }
+    
+    if (w.id === 'fire') { 
+        const r = 50 + w.level*20; 
+        enemies.forEach(e => { 
+            if(Math.hypot(e.x-pl.x, e.y-pl.y) < r) { 
+                e.hp -= (10+w.level*5) * sd * 2; // Continuous damage
+                e.hitTimer = 0.1; 
+            } 
+        }); 
+        w.cdTimer = 0; 
+    }
+    
+    if (w.id === 'web') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*15, vy: Math.sin(angle)*15, damage: 15, life: 1.5, emoji: '🕸️', radius: 8, hitList: [], slow: true, freeze: pl.currentFormIndex === 14, owner: pl }); w.cdTimer = w.cd; }
     if (w.id === 'symbiote') { projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*22, vy: Math.sin(angle)*22, damage: 25, life: 1.0, emoji: '⚫', radius: 10, lifesteal: true, owner: pl, hitList: [] }); w.cdTimer = w.cd; }
     if (w.id === 'spirit') { if(minions.filter(m=>m.owner===pl).length < w.level) minions.push({ x: pl.x, y: pl.y, cdTimer: 0, isKing: false, owner: pl, emoji: '👻' }); w.cdTimer = w.cd; }
     if (w.id === 'lightning') { 
@@ -629,7 +640,6 @@ function updateWeapons(pl, dt) {
             if(e){ 
                 e.hp -= 30; e.hitTimer = 0.1; 
                 spawnParticles(e.x, e.y, '#e9c46a', 3); 
-                // Fulmine visivo
                 for(let j=0; j<5; j++) particles.push({ x: e.x + (Math.random()-0.5)*20, y: e.y - 100 + j*25, vx: (Math.random()-0.5)*5, vy: 10, life: 0.2, color: '#ffff00' });
             } 
         } 
@@ -639,16 +649,36 @@ function updateWeapons(pl, dt) {
       const rays = 1 + Math.floor(w.level/2) + (pl.currentFormIndex===15?4:0);
       for (let r = 0; r < rays; r++) {
         const a = (Date.now()/1000) + (r*Math.PI*2/rays);
-        enemies.forEach(e => { const d = Math.hypot(e.x-pl.x, e.y-pl.y); if(d<200){ const da = Math.atan2(e.y-pl.y, e.x-pl.x); if(Math.abs(Math.atan2(Math.sin(a-da), Math.cos(a-da))) < 0.2 && !e.rayTimer) { e.hp -= 10+w.level*5; e.hitTimer = 0.1; e.rayTimer = 0.2; } } });
+        enemies.forEach(e => { 
+            const d = Math.hypot(e.x-pl.x, e.y-pl.y); 
+            if(d<200){ 
+                const da = Math.atan2(e.y-pl.y, e.x-pl.x); 
+                if(Math.abs(Math.atan2(Math.sin(a-da), Math.cos(a-da))) < 0.2) { 
+                    e.hp -= (10+w.level*5) * sd * 3; // Continuous damage
+                    e.hitTimer = 0.1; 
+                } 
+            } 
+        });
       }
+      w.cdTimer = 0;
     }
     if (w.id === 'orb') { 
       const r = 90 + w.level*5;
-      for(let i=0;i<4+w.level;i++) { const a = (Date.now()/400)+(i*Math.PI*2/(4+w.level)); const ox=pl.x+Math.cos(a)*r, oy=pl.y+Math.sin(a)*r; enemies.forEach(e => { if(Math.hypot(e.x-ox, e.y-oy) < e.radius+14 && !e.orbTimer) { e.hp -= 8+w.level*4; e.hitTimer=0.1; e.orbTimer=0.25; } }); }
+      for(let i=0;i<4+w.level;i++) { 
+          const a = (Date.now()/400)+(i*Math.PI*2/(4+w.level)); 
+          const ox=pl.x+Math.cos(a)*r, oy=pl.y+Math.sin(a)*r; 
+          enemies.forEach(e => { 
+              if(Math.hypot(e.x-ox, e.y-oy) < e.radius+14) { 
+                  e.hp -= (8+w.level*4) * sd * 3; // Continuous damage
+                  e.hitTimer=0.1; 
+              } 
+          }); 
+      }
+      w.cdTimer = 0;
     }
     if (w.id === 'wand') { 
-        if(pl.currentFormIndex===13) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*25, vy: Math.sin(angle)*25, damage: 40, life: 2, emoji: '💀', radius: 8, pierce: true, hitList: [] });
-        else projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*20, vy: Math.sin(angle)*20, damage: 18+w.level*8, life: 1.5, emoji: '✨', radius: 6, hitList: [] }); 
+        if(pl.currentFormIndex===13) projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*25, vy: Math.sin(angle)*25, damage: 40, life: 2, emoji: '💀', radius: 8, pierce: true, hitList: [], owner: pl });
+        else projectiles.push({ x: pl.x, y: pl.y, vx: Math.cos(angle)*20, vy: Math.sin(angle)*20, damage: 18+w.level*8, life: 1.5, emoji: '✨', radius: 6, hitList: [], owner: pl }); 
         w.cdTimer = w.cd; 
     }
   });
@@ -656,10 +686,12 @@ function updateWeapons(pl, dt) {
 
 function update(dt) {
   if (isGameOver || isLevelUp || isChestOpen || !isStarted || isPaused) return;
-  gameTime += dt;
+  const speedDt = dt * gameSpeed;
+  gameTime += speedDt;
+  
   if (Math.floor(gameTime) > recordTime) { recordTime = Math.floor(gameTime); safeStorage.setItem('neon_record', recordTime); }
   
-  uiUpdateTimer -= dt;
+  uiUpdateTimer -= speedDt;
   if(uiUpdateTimer <= 0) {
       const mins = Math.floor(gameTime / 60).toString().padStart(2, '0');
       const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
@@ -672,7 +704,7 @@ function update(dt) {
 
   [p1, p2].forEach(pl => {
     if (pl && pl.isOmnitrix && pl.hp > 0) {
-      pl.omniTimer += dt;
+      pl.omniTimer += speedDt;
       if (pl.omniTimer > 10 && pl.unlockedForms < omniForms.length) {
         pl.omniTimer = 0; pl.unlockedForms++;
         const alertEl = document.getElementById('bonus-alert');
@@ -681,18 +713,18 @@ function update(dt) {
     }
   });
 
-  if (camera.shake > 0) camera.shake -= dt * 50;
+  if (camera.shake > 0) camera.shake -= speedDt * 50;
   
   [p1, p2].forEach((pl, idx) => {
     if (!pl || pl.hp <= 0) return;
-    if (pl.dashCd > 0) pl.dashCd -= dt;
-    if (pl.isDashing) { pl.dashTimer -= dt; if (pl.dashTimer <= 0) pl.isDashing = false; }
+    if (pl.dashCd > 0) pl.dashCd -= speedDt;
+    if (pl.isDashing) { pl.dashTimer -= speedDt; if (pl.dashTimer <= 0) pl.isDashing = false; }
     let vx = idx === 0 ? p1Vector.x : p2Vector.x, vy = idx === 0 ? p1Vector.y : p2Vector.y;
     const len = Math.sqrt(vx*vx + vy*vy);
     if (len > 0) { pl.facingX = vx/len; pl.facingY = vy/len; }
-    if (pl.isDashing) { pl.x += pl.dashDir.x * pl.speed * 3 * dt * 60; pl.y += pl.dashDir.y * pl.speed * 3 * dt * 60; }
-    else if (len > 0) { pl.x += (vx/len) * pl.speed * dt * 60; pl.y += (vy/len) * pl.speed * dt * 60; }
-    if (pl.invuln > 0) pl.invuln -= dt;
+    if (pl.isDashing) { pl.x += pl.dashDir.x * pl.speed * 3 * speedDt * 60; pl.y += pl.dashDir.y * pl.speed * 3 * speedDt * 60; }
+    else if (len > 0) { pl.x += (vx/len) * pl.speed * speedDt * 60; pl.y += (vy/len) * pl.speed * speedDt * 60; }
+    if (pl.invuln > 0) pl.invuln -= speedDt;
     if (isNaN(pl.x)) pl.x = 0; if (isNaN(pl.y)) pl.y = 0;
     resolveWallCollision(pl);
   });
@@ -701,33 +733,33 @@ function update(dt) {
   camera.x = isNaN(c.x) ? -W/2 : c.x - W/2 + (Math.random()-0.5)*camera.shake;
   camera.y = isNaN(c.y) ? -H/2 : c.y - H/2 + (Math.random()-0.5)*camera.shake;
 
-  if (currentGameMode === 'endless' && Math.random() < dt * (2 + gameTime * 0.1)) spawnEnemy();
+  if (currentGameMode === 'endless' && Math.random() < speedDt * (2 + gameTime * 0.1)) spawnEnemy();
 
   minions.forEach(m => {
-    m.cdTimer -= dt;
+    m.cdTimer -= speedDt;
     const owner = m.owner && m.owner.hp > 0 ? m.owner : p1;
     if (owner) {
       const d = Math.hypot(owner.x - m.x, owner.y - m.y);
-      if (d > 150) { m.x += (owner.x - m.x)/d * 6; m.y += (owner.y - m.y)/d * 6; }
+      if (d > 150) { m.x += (owner.x - m.x)/d * 6 * speedDt * 60; m.y += (owner.y - m.y)/d * 6 * speedDt * 60; }
     }
     if (m.cdTimer <= 0) {
       let nearest = null, minD = 400;
       enemies.forEach(e => { const d = Math.hypot(e.x-m.x, e.y-m.y); if(d<minD){minD=d;nearest=e;} });
       if (nearest) {
         const a = Math.atan2(nearest.y-m.y, nearest.x-m.x);
-        projectiles.push({ x: m.x, y: m.y, vx: Math.cos(a)*15, vy: Math.sin(a)*15, damage: m.isPatronus?80:30, life: 1.5, emoji: m.isPatronus?'✨':'👻', color: m.isPatronus?'#fff':'#2a9d8f', radius: 8, hitList: [], pierce: m.isPatronus });
+        projectiles.push({ x: m.x, y: m.y, vx: Math.cos(a)*15, vy: Math.sin(a)*15, damage: m.isPatronus?80:30, life: 1.5, emoji: m.isPatronus?'✨':'👻', color: m.isPatronus?'#fff':'#2a9d8f', radius: 8, hitList: [], pierce: m.isPatronus, owner: m.owner });
         m.cdTimer = 1.0;
       }
     }
   });
 
-  updateWeapons(p1, dt); if (p2) updateWeapons(p2, dt);
-  enemies.forEach(e => { if (e.rayTimer) e.rayTimer -= dt; if (e.orbTimer) e.orbTimer -= dt; });
+  updateWeapons(p1, speedDt); if (p2) updateWeapons(p2, speedDt);
+  enemies.forEach(e => { if (e.rayTimer) e.rayTimer -= speedDt; if (e.orbTimer) e.orbTimer -= speedDt; });
 
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
     if (p.isTNT) {
-      p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.life -= dt;
+      p.x += p.vx * speedDt * 60; p.y += p.vy * speedDt * 60; p.life -= speedDt;
       let hit = false;
       if(walls.some(w => p.x>w.x-10 && p.x<w.x+w.w+10 && p.y>w.y-10 && p.y<w.y+w.h+10)) hit = true;
       if(enemies.some(e => Math.hypot(e.x-p.x, e.y-p.y) < e.radius+10)) hit = true;
@@ -739,7 +771,7 @@ function update(dt) {
       continue;
     }
     if (p.isPotion) {
-      p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.vx *= 0.94; p.vy *= 0.94; p.life -= dt;
+      p.x += p.vx * speedDt * 60; p.y += p.vy * speedDt * 60; p.vx *= 0.94; p.vy *= 0.94; p.life -= speedDt;
       if (p.life <= 0) {
         potionClouds.push({ x: p.x, y: p.y, radius: 40 + p.potionLevel*5 + (p.owner.isOmnitrix&&p.owner.currentFormIndex===8?40:0), life: 3, owner: p.owner, damage: 10, tickTimer: 0 });
         projectiles.splice(i, 1); continue;
@@ -747,38 +779,58 @@ function update(dt) {
       continue;
     }
 
-    p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.life -= dt;
+    let moveDist = Math.hypot(p.vx, p.vy) * speedDt * 60;
+    let steps = Math.max(1, Math.ceil(moveDist / 10)); 
+    let stepX = (p.vx * speedDt * 60) / steps;
+    let stepY = (p.vy * speedDt * 60) / steps;
+
     let hit = false;
-    for (let e of enemies) {
-      if (e.hp > 0 && p.hitList && !p.hitList.includes(e) && Math.hypot(e.x-p.x, e.y-p.y) < e.radius + p.radius) {
-        let dmg = p.damage;
-        if (p.owner && p.owner.isOmnitrix && p.owner.currentFormIndex === 9 && e.hp < e.maxHp*0.3) dmg *= 2;
-        e.hp -= dmg; e.hitTimer = 0.1; spawnParticles(p.x, p.y, p.color, 2);
-        if (p.slow) { if (p.freeze) e.slowTimer = 100; else e.slowTimer = 2; }
-        if (p.lifesteal && p.owner) p.owner.hp = Math.min(p.owner.maxHp, p.owner.hp + 2);
-        if(p.hitList) p.hitList.push(e);
-        
-        if (p.pierce) { } 
-        else if (p.bounce && p.bouncesLeft > 0) {
-          let next = null, minD = 90000;
-          enemies.forEach(o => { if(o!==e && o.hp>0 && p.hitList && !p.hitList.includes(o)) { const d = Math.hypot(o.x-p.x, o.y-p.y); if(d<minD){minD=d;next=o;} } });
-          if (next) { const a = Math.atan2(next.y-p.y, next.x-p.x); p.vx = Math.cos(a)*20; p.vy = Math.sin(a)*20; p.bouncesLeft--; p.life=1.5; } else hit = true;
-        } else hit = true;
-        break;
+
+    for (let s = 0; s < steps; s++) {
+      p.x += stepX;
+      p.y += stepY;
+
+      for (let e of enemies) {
+        if (e.hp > 0 && p.hitList && !p.hitList.includes(e) && Math.hypot(e.x-p.x, e.y-p.y) < e.radius + p.radius) {
+          let dmg = p.damage;
+          if (p.owner && p.owner.isOmnitrix && p.owner.currentFormIndex === 9 && e.hp < e.maxHp*0.3) dmg *= 2;
+          e.hp -= dmg; e.hitTimer = 0.1; spawnParticles(p.x, p.y, p.color, 2);
+          if (p.slow) { if (p.freeze) e.slowTimer = 100; else e.slowTimer = 2; }
+          if (p.lifesteal && p.owner) p.owner.hp = Math.min(p.owner.maxHp, p.owner.hp + 2);
+          if(p.hitList) p.hitList.push(e);
+          
+          if (p.pierce) { } 
+          else if (p.bounce && p.bouncesLeft > 0) {
+            let next = null, minD = 90000;
+            enemies.forEach(o => { if(o!==e && o.hp>0 && p.hitList && !p.hitList.includes(o)) { const d = Math.hypot(o.x-p.x, o.y-p.y); if(d<minD){minD=d;next=o;} } });
+            if (next) { 
+                const a = Math.atan2(next.y-p.y, next.x-p.x); 
+                p.vx = Math.cos(a)*20; 
+                p.vy = Math.sin(a)*20; 
+                p.bouncesLeft--; 
+                p.life=1.5;
+                s = steps; 
+            } else hit = true;
+          } else hit = true;
+          break;
+        }
       }
+      if (hit) break;
     }
+
+    p.life -= speedDt;
     if (hit || p.life <= 0) projectiles.splice(i, 1);
   }
 
   for (let i = potionClouds.length - 1; i >= 0; i--) {
-    const c = potionClouds[i]; c.life -= dt; c.tickTimer -= dt;
+    const c = potionClouds[i]; c.life -= speedDt; c.tickTimer -= speedDt;
     if (c.tickTimer <= 0) { c.tickTimer = 0.5; enemies.forEach(e => { if(Math.hypot(e.x-c.x, e.y-c.y) < c.radius) { e.hp -= c.damage; e.hitTimer = 0.1; } }); }
     if (c.life <= 0) potionClouds.splice(i, 1);
   }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
-    if (e.hitTimer) e.hitTimer -= dt; if (e.slowTimer > 0) e.slowTimer -= dt;
+    if (e.hitTimer) e.hitTimer -= speedDt; if (e.slowTimer > 0) e.slowTimer -= speedDt;
     
     if (e.hp <= 0) {
       const xpMult = (p1.isOmnitrix&&p1.currentFormIndex===10?1.5:1);
@@ -795,11 +847,11 @@ function update(dt) {
     if (p2 && p2.hp > 0 && p2.invisTimer <= 0 && Math.hypot(p2.x-e.x, p2.y-e.y) < Math.hypot(p1.x-e.x, p1.y-e.y) && p1.invisTimer<=0) target = p2;
 
     const angle = Math.atan2(target.y - e.y, target.x - e.x);
-    const spd = e.speed * (e.slowTimer > 0 ? 0.4 : 1) * dt * 60;
+    const spd = e.speed * (e.slowTimer > 0 ? 0.4 : 1) * speedDt * 60;
     e.x += Math.cos(angle) * spd; e.y += Math.sin(angle) * spd;
     
     if (Math.hypot(e.x-target.x, e.y-target.y) < e.radius + target.radius && target.invuln <= 0 && target.invisTimer <= 0) {
-      if(target.isOmnitrix && target.currentFormIndex === 5) { /* Ghostfreak */ } 
+      if(target.isOmnitrix && target.currentFormIndex === 5) { } 
       else {
         target.hp -= e.dmg; target.invuln = 1.5; camera.shake = 5;
         const vig = document.getElementById('vignette'); if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0.6)'; setTimeout(()=>{ if(vig) vig.style.boxShadow = 'inset 0 0 80px rgba(231, 111, 81, 0)'; }, 200);
@@ -808,7 +860,7 @@ function update(dt) {
   }
 
   for (let i = enemyBullets.length - 1; i >= 0; i--) {
-    const b = enemyBullets[i]; b.x += b.vx * dt * 60; b.y += b.vy * dt * 60; b.life -= dt;
+    const b = enemyBullets[i]; b.x += b.vx * speedDt * 60; b.y += b.vy * speedDt * 60; b.life -= speedDt;
     [p1, p2].forEach(pl => {
       if (pl && pl.hp > 0 && pl.invuln <= 0 && pl.invisTimer <= 0 && Math.hypot(pl.x - b.x, pl.y - b.y) < pl.radius + b.radius) {
         if (pl.isHarry && pl.shieldActive > 0) {
@@ -826,7 +878,7 @@ function update(dt) {
     const o = orbs[i]; let best = null, bestSq = Infinity;
     alive.forEach(p => { const d = (p.x-o.x)**2 + (p.y-o.y)**2; if (d < bestSq) { bestSq = d; best = p; } });
     if (best) {
-      if (bestSq < best.magnetRange**2) { const a = Math.atan2(best.y-o.y, best.x-o.x); o.x += Math.cos(a)*15*dt*60; o.y += Math.sin(a)*15*dt*60; }
+      if (bestSq < best.magnetRange**2) { const a = Math.atan2(best.y-o.y, best.x-o.x); o.x += Math.cos(a)*15*speedDt*60; o.y += Math.sin(a)*15*speedDt*60; }
       if (bestSq < (best.radius+4)**2) { p1.xp += o.value; if(p2)p2.xp += o.value; orbs.splice(i,1); if(p1.xp >= p1.xpNext) triggerLevelUp(); }
     }
   }
@@ -838,15 +890,15 @@ function update(dt) {
   }
 
   if (portal) {
-    portal.phase += dt*2;
+    portal.phase += speedDt*2;
     if (alive.some(p => Math.hypot(p.x, p.y) < 40)) { currentFloor++; generateFloor(currentFloor); }
   }
   
   for (let i = particles.length - 1; i >= 0; i--) { 
       const p = particles[i];
-      p.x += p.vx * dt * 60; 
-      p.y += p.vy * dt * 60;
-      p.life -= dt; 
+      p.x += p.vx * speedDt * 60; 
+      p.y += p.vy * speedDt * 60;
+      p.life -= speedDt; 
       if (p.life <= 0) particles.splice(i,1); 
   }
 
